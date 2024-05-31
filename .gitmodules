@@ -1,4 +1,5 @@
+
 [submodule "godot-cpp"]
 	path = godot-cpp
-	url = https://github.com/godotengine/godot-cpp/tree/godot-4.2.2-stable
-	branch = master
+	url = https://github.com/godotengine/godot-cpp.git
+	branch = tags/godot-4.2.2-stable
