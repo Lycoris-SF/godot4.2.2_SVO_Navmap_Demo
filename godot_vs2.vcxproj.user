@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <ShowAllFiles>false</ShowAllFiles>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_game|x64'">
+    <LocalDebuggerCommand>$(SolutionDir)godot\Godot_v4.2.2-stable_win64.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>--path "$(SolutionDir)godot-project</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_dev|x64'">
+    <LocalDebuggerCommand>$(SolutionDir)godot\godot.windows.editor.dev.x86_64.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>-e --path "$(SolutionDir)godot-project</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_debug|x64'">
+    <LocalDebuggerCommand>$(SolutionDir)godot\godot.windows.editor.x86_64.exe</LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>-e --path "$(SolutionDir)godot-project</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+</Project>
