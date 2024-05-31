@@ -401,3 +401,5 @@ FodyWeavers.xsd
 *.vcxproj.filters
 .sconsign.dblite
 /godot/*.exe
+
+godot-cpp-old/
