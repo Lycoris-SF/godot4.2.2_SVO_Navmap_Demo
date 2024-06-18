@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "godot_vs2", "godot_vs2.vcxp
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Cpp_test|x64 = Cpp_test|x64
+		Cpp_test|x86 = Cpp_test|x86
 		GD_debug|x64 = GD_debug|x64
 		GD_debug|x86 = GD_debug|x86
 		GD_dev|x64 = GD_dev|x64
@@ -15,6 +17,10 @@ Global
 		GD_game|x86 = GD_game|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{01CFD982-26AE-4B5E-A7FF-FF844D9155F0}.Cpp_test|x64.ActiveCfg = Cpp_test|x64
+		{01CFD982-26AE-4B5E-A7FF-FF844D9155F0}.Cpp_test|x64.Build.0 = Cpp_test|x64
+		{01CFD982-26AE-4B5E-A7FF-FF844D9155F0}.Cpp_test|x86.ActiveCfg = Cpp_test|Win32
+		{01CFD982-26AE-4B5E-A7FF-FF844D9155F0}.Cpp_test|x86.Build.0 = Cpp_test|Win32
 		{01CFD982-26AE-4B5E-A7FF-FF844D9155F0}.GD_debug|x64.ActiveCfg = GD_debug|x64
 		{01CFD982-26AE-4B5E-A7FF-FF844D9155F0}.GD_debug|x64.Build.0 = GD_debug|x64
 		{01CFD982-26AE-4B5E-A7FF-FF844D9155F0}.GD_debug|x86.ActiveCfg = GD_debug|Win32

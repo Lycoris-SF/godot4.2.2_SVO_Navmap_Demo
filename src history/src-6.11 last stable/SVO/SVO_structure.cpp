@@ -18,13 +18,12 @@ OctreeNode::OctreeNode(int depth) : currentDepth(depth), isLeaf(true), isHomogen
     for (int i = 0; i < 6; ++i) {
         neighbors[i] = nullptr;  // 初始化所有邻居指针为 nullptr
     }
-    center = Vector3(0, 0, 0);
 }
 
 OctreeNode::~OctreeNode() {
-    if(voxel) delete voxel;
+    delete voxel;
     for (int i = 0; i < 8; ++i) {
-        if(children[i]) delete children[i];
+        delete children[i];
     }
 }
 
@@ -35,36 +34,24 @@ bool OctreeNode::isEmpty() const {
 SparseVoxelOctree::SparseVoxelOctree() {
     maxDepth = 3;
     voxelSize = 1.0f;
-    root = new OctreeNode(0);
-    root->voxel = new Voxel(false, voxelSize);
+    root = new OctreeNode();
 }
 
 SparseVoxelOctree::SparseVoxelOctree(int max_depth, float voxelSize)
     : maxDepth(max_depth), voxelSize(voxelSize){
-    root = new OctreeNode(0);
-    root->voxel = new Voxel(false, voxelSize);
+    root = new OctreeNode();
 }
 
 SparseVoxelOctree::~SparseVoxelOctree() {
     delete root;
 }
 
-void SparseVoxelOctree::insert(float  x, float  y, float  z) {
-    insert(root, x, y, z, 0, 0, 0, 1);
+void SparseVoxelOctree::insert(int x, int y, int z) {
+    insert(root, x, y, z, 0);
 }
 
-void updateCenterCoordinates(float& centerX, float& centerY, float& centerZ, int index, float halfSize) {
-    if (index & 1) centerX += halfSize / 2;  // X方向
-    else centerX -= halfSize / 2;
-
-    if (index & 2) centerY += halfSize / 2;  // Y方向
-    else centerY -= halfSize / 2;
-
-    if (index & 4) centerZ += halfSize / 2;  // Z方向
-    else centerZ -= halfSize / 2;
-}
-void SparseVoxelOctree::insert(OctreeNode* node, float  x, float  y, float  z, float centerX, float centerY, float centerZ, int depth) {
-    if (depth == maxDepth) {  // 检查是否达到最大深度
+void SparseVoxelOctree::insert(OctreeNode* node, int x, int y, int z, int depth) {
+    if (depth == maxDepth - 1) { // 确保只有三层
         if (!node->voxel) {
             node->voxel = new Voxel(true, calActualVoxelSize(depth));
         }
@@ -76,38 +63,15 @@ void SparseVoxelOctree::insert(OctreeNode* node, float  x, float  y, float  z, f
         return;
     }
 
-    // cal index
-    float halfSize = voxelSize / pow(2, depth);
-    int index = (x >= centerX) | ((y >= centerY) << 1) | ((z >= centerZ) << 2);
-    // 更新中心坐标为下一层
-    updateCenterCoordinates(centerX, centerY, centerZ, index, halfSize);
+    int halfSize = 1 << (maxDepth - depth - 1);
+    int index = (x >= halfSize) | ((y >= halfSize) << 1) | ((z >= halfSize) << 2);
 
-    // old index
-    //int halfSize = 1 << (maxDepth - depth);  // 调整以适应新的深度计数
-    //int index = (x >= halfSize) | ((y >= halfSize) << 1) | ((z >= halfSize) << 2);
-    
-    // 确定或创建相应的子节点
     if (!node->children[index]) {
-        node->children[index] = new OctreeNode(depth);
-        if (!node->children[index]->voxel) {
-            node->children[index]->voxel = new Voxel(false, calActualVoxelSize(depth));
-        }
-        // 设置子节点的中心坐标
-        node->children[index]->center.x = centerX;
-        node->children[index]->center.y = centerY;
-        node->children[index]->center.z = centerZ;
+        node->children[index] = new OctreeNode(depth + 1); // 创建新节点并传递当前深度
+        node->isLeaf = false;
     }
 
-    // old insert
-    /*if (!node->children[index]) {
-        node->children[index] = new OctreeNode(depth);  // 传递当前深度
-        node->children[index]->voxel = new Voxel(false, calActualVoxelSize(depth));
-        node->isLeaf = false;
-    }*/
-
-    insert(node->children[index], x, y, z, centerX, centerY, centerZ, depth + 1);
-    // old insert
-    //insert(node->children[index], x % halfSize, y % halfSize, z % halfSize, depth + 1);
+    insert(node->children[index], x % halfSize, y % halfSize, z % halfSize, depth + 1);
 
     // 检查子节点是否为同质节点，如果是则合并
     bool allHomogeneous = true;
@@ -125,51 +89,39 @@ void SparseVoxelOctree::insert(OctreeNode* node, float  x, float  y, float  z, f
         }
         node->isLeaf = true;
         node->isHomogeneous = true;
-        node->voxel = new Voxel(firstSolid, calActualVoxelSize(depth - 1));
+        node->voxel = new Voxel(firstSolid, calActualVoxelSize(depth));
     }
 }
 
-bool SparseVoxelOctree::query(float  x, float  y, float  z) const {
-    return query(root, x, y, x, 1);
+bool SparseVoxelOctree::query(int x, int y, int z) const {
+    return query(root, x, y, x, 0);
 }
 
-bool SparseVoxelOctree::query(OctreeNode* node, float x, float y, float z, int depth) const {
+bool SparseVoxelOctree::query(OctreeNode* node, int x, int y, int z, int depth) const {
     if (!node || node->isEmpty()) {
         return false; // 空节点或未占用区域
     }
     if (node->isHomogeneous) {
         return node->voxel ? node->voxel->isSolid : false; // 同质节点直接返回结果
     }
-    if (depth == maxDepth) {
+    if (depth == maxDepth-1) {
         return node->voxel ? node->voxel->isSolid : false; // 叶节点
     }
 
-    int halfSize = 1 << (maxDepth - depth);  // 当前深度下节点的半尺寸
-    int index = ((x >= halfSize) ? 1 : 0) |
-        ((y >= halfSize) ? 2 : 0) |
-        ((z >= halfSize) ? 4 : 0);  // 计算节点索引
+    int halfSize = 1 << (maxDepth - depth - 1);
+    int index = (x >= halfSize) | ((y >= halfSize) << 1) | ((z >= halfSize) << 2);
 
-    // 计算下一步递归的相对坐标
-    float newX = fmod(x, halfSize);
-    float newY = fmod(y, halfSize);
-    float newZ = fmod(z, halfSize);
-
-    // 确保坐标非负，因为 fmod 能返回负值
-    newX += (newX < 0) ? halfSize : 0;
-    newY += (newY < 0) ? halfSize : 0;
-    newZ += (newZ < 0) ? halfSize : 0;
-
-    return query(node->children[index], newX, newY, newZ, depth + 1);
+    return query(node->children[index], x % halfSize, y % halfSize, z % halfSize, depth + 1);
 }
 
-void SparseVoxelOctree::update(float  x, float  y, float  z, bool isSolid) {
-    update(root, x, y, z, 1, isSolid);
+void SparseVoxelOctree::update(int x, int y, int z, bool isSolid) {
+    update(root, x, y, z, 0, isSolid);
 }
 
-void SparseVoxelOctree::update(OctreeNode* node, float x, float y, float z, int depth, bool isSolid) {
+void SparseVoxelOctree::update(OctreeNode* node, int x, int y, int z, int depth, bool isSolid) {
     if (!node) return; // 如果节点不存在，则不做任何操作
 
-    if (depth == maxDepth) {
+    if (depth == maxDepth-1) {
         if (!node->voxel) {
             node->voxel = new Voxel(isSolid, calActualVoxelSize(depth)); // 如果体素不存在，则创建新体素
         }
@@ -181,28 +133,15 @@ void SparseVoxelOctree::update(OctreeNode* node, float x, float y, float z, int 
         return;
     }
 
-    int halfSize = 1 << (maxDepth - depth);
-    int index = ((x >= halfSize) ? 1 : 0) |
-        ((y >= halfSize) ? 2 : 0) |
-        ((z >= halfSize) ? 4 : 0); // 计算节点索引
-
-    // 计算下一步递归的相对坐标
-    float newX = fmod(x, halfSize);
-    float newY = fmod(y, halfSize);
-    float newZ = fmod(z, halfSize);
-
-    // 确保坐标非负，因为 fmod 能返回负值
-    newX += (newX < 0) ? halfSize : 0;
-    newY += (newY < 0) ? halfSize : 0;
-    newZ += (newZ < 0) ? halfSize : 0;
+    int halfSize = 1 << (maxDepth - depth - 1);
+    int index = (x >= halfSize) | ((y >= halfSize) << 1) | ((z >= halfSize) << 2);
 
     if (!node->children[index]) {
-        node->children[index] = new OctreeNode(depth + 1); // 如果子节点不存在，则创建新的子节点
-        node->children[index]->voxel = new Voxel(false, calActualVoxelSize(depth + 1));
+        node->children[index] = new OctreeNode(); // 如果子节点不存在，则创建新的子节点
         node->isLeaf = false;
     }
 
-    update(node->children[index], newX, newY, newZ, depth + 1, isSolid);
+    update(node->children[index], x % halfSize, y % halfSize, z % halfSize, depth + 1, isSolid);
 
     // 检查并更新节点的同质性状态
     bool allHomogeneous = true;
@@ -224,7 +163,6 @@ void SparseVoxelOctree::update(OctreeNode* node, float x, float y, float z, int 
     }
 }
 
-
 void SparseVoxelOctree::deleteChildren(OctreeNode* node) {
     for (int i = 0; i < 8; ++i) {
         if (node->children[i]) {
@@ -239,21 +177,23 @@ void SparseVoxelOctree::deleteChildren(OctreeNode* node) {
 }
 
 void SparseVoxelOctree::deleteNode(OctreeNode* node) {
-    // 递归地删除所有子节点
-    if (node != nullptr) {
+    if (!node) return;
+
+    godot::Vector<OctreeNode*> stack;
+    stack.push_back(node);
+
+    while (!stack.is_empty()) {
+        OctreeNode* current = stack[stack.size() - 1];
+        stack.remove_at(stack.size() - 1);
+
         for (int i = 0; i < 8; ++i) {
-            if (node->children[i] != nullptr) {
-                deleteNode(node->children[i]);  // 递归删除子节点
-                node->children[i] = nullptr;    // 清空指针
+            if (current->children[i]) {
+                stack.push_back(current->children[i]);
             }
         }
-        // 删除当前节点保存的体素（如果有）
-        if (node->voxel != nullptr) {
-            delete node->voxel;
-            node->voxel = nullptr;
-        }
-        // 删除当前节点本身
-        delete node;
+
+        delete current->voxel;  // 删除体素
+        delete current;  // 删除当前节点
     }
 }
 
@@ -261,9 +201,8 @@ void SparseVoxelOctree::clear() {
     // 删除整个树
     deleteNode(root);
     // 重新初始化根节点
-    root = new OctreeNode(0);
+    root = new OctreeNode();
 }
-
 float SparseVoxelOctree::calActualVoxelSize(int depth) {
     return voxelSize / (1 << depth);
 }

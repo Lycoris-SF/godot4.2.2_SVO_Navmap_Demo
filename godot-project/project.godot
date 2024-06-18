@@ -14,3 +14,7 @@ config/name="Godot-project"
 run/main_scene="res://main_scene.tscn"
 config/features=PackedStringArray("4.2", "Forward Plus")
 config/icon="res://icon.svg"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/svo_editor_plugin/plugin.cfg")

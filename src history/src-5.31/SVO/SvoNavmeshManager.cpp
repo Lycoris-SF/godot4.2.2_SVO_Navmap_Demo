@@ -32,7 +32,7 @@ SvoNavmesh* SvoNavmeshManager::find_navmesh_containing(Vector3 position) const {
     return nullptr;
 }
 
-Vector<Vector3> SvoNavmeshManager::find_path(Vector3 start, Vector3 end) const {
+std::vector<Vector3> SvoNavmeshManager::find_path(Vector3 start, Vector3 end) const {
     SvoNavmesh* start_navmesh = find_navmesh_containing(start);
     SvoNavmesh* end_navmesh = find_navmesh_containing(end);
 
@@ -48,7 +48,7 @@ Vector<Vector3> SvoNavmeshManager::find_path(Vector3 start, Vector3 end) const {
 
     // 否则，需要处理跨多个Navmesh的寻路
     // 简化处理：找到相邻Navmesh之间的连接点，进行A*或其他路径规划
-    Vector<Vector3> path;
+    std::vector<Vector3> path;
 
     // 这里只是一个示例，实际实现会更加复杂
     path.push_back(start);

@@ -16,7 +16,6 @@ namespace godot {
         bool isLeaf;
         bool isHomogeneous; // 表示该节点是否为同质节点
         int currentDepth;
-        Vector3 center;
         Voxel* voxel;
         OctreeNode* children[8];
         OctreeNode* neighbors[6];
@@ -36,15 +35,15 @@ namespace godot {
         SparseVoxelOctree(int max_depth, float voxelSize);
         ~SparseVoxelOctree();
 
-        void insert(float x, float y, float z);
-        bool query(float x, float y, float z) const;
-        void update(float x, float y, float z, bool isSolid);
+        void insert(int x, int y, int z);
+        bool query(int x, int y, int z) const;
+        void update(int x, int y, int z, bool isSolid);
         void clear();
 
     private:
-        void insert(OctreeNode* node, float x, float y, float z, float centerX, float centerY, float centerZ, int depth);
-        bool query(OctreeNode* node, float x, float y, float z, int depth) const;
-        void update(OctreeNode* node, float x, float y, float z, int depth, bool isSolid);
+        void insert(OctreeNode* node, int x, int y, int z, int depth);
+        bool query(OctreeNode* node, int x, int y, int z, int depth) const;
+        void update(OctreeNode* node, int x, int y, int z, int depth, bool isSolid);
         void deleteChildren(OctreeNode* node);
         void deleteNode(OctreeNode* node);  // 递归删除节点
         float calActualVoxelSize(int depth); // 计算实际体素大小

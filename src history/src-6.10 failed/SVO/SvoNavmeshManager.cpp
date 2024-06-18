@@ -11,29 +11,29 @@ SvoNavmeshManager::~SvoNavmeshManager() {
 }
 
 void SvoNavmeshManager::add_navmesh(SvoNavmesh* navmesh) {
-    navmeshes.push_back(navmesh);
+    //navmeshes.push_back(navmesh);
 }
 
 bool SvoNavmeshManager::query(Vector3 position) const {
-    for (auto navmesh : navmeshes) {
+    /*for (auto navmesh : navmeshes) {
         if (navmesh->query_voxel(position)) {
             return true;
         }
-    }
+    }*/
     return false;
 }
 
 SvoNavmesh* SvoNavmeshManager::find_navmesh_containing(Vector3 position) const {
-    for (auto navmesh : navmeshes) {
+    /*for (auto navmesh : navmeshes) {
         if (navmesh->query_voxel(position)) {
             return navmesh;
         }
-    }
+    }*/
     return nullptr;
 }
 
 Vector<Vector3> SvoNavmeshManager::find_path(Vector3 start, Vector3 end) const {
-    SvoNavmesh* start_navmesh = find_navmesh_containing(start);
+    /*SvoNavmesh* start_navmesh = find_navmesh_containing(start);
     SvoNavmesh* end_navmesh = find_navmesh_containing(end);
 
     if (!start_navmesh || !end_navmesh) {
@@ -55,5 +55,6 @@ Vector<Vector3> SvoNavmeshManager::find_path(Vector3 start, Vector3 end) const {
     path.push_back(Vector3(0, 0, 0)); // Placeholder for boundary point
     path.push_back(end);
 
-    return path;
+    return path;*/
+    return {};
 }
