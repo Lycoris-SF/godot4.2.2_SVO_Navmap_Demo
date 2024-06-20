@@ -1,3 +1,10 @@
 [gd_scene format=3 uid="uid://dmewdm6nh1n6i"]
 
-[node name="SvoNavmesh" type="SvoNavmesh"]
+[node name="Root" type="Node3D"]
+
+[node name="SvoNavmesh" type="SvoNavmesh" parent="."]
+
+[node name="SvoNavmesh2" type="SvoNavmesh" parent="."]
+max_depth = 5
+DrawRef_maxDepth = 5
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.5, 0, 0)

@@ -6,15 +6,12 @@
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
 #include <godot_cpp/godot.hpp>
-#define global_min_depth 1
-#define global_max_depth 9
 
 using namespace godot;
 
 void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("insert_voxel", "position"), &SvoNavmesh::insert_voxel);
     ClassDB::bind_method(D_METHOD("query_voxel", "position"), &SvoNavmesh::query_voxel);
-    ClassDB::bind_method(D_METHOD("update_voxel", "position", "isSolid"), &SvoNavmesh::update_voxel);
     ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmesh::get_info);
     ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmesh::set_info);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "testdouble"), "set_info", "get_info");
@@ -36,17 +33,7 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("set_max_depth", "depth"), &SvoNavmesh::set_max_depth);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "max_depth"), "set_max_depth", "get_max_depth");
 
-    // debug draw property
-    ClassDB::bind_method(D_METHOD("get_DR_min_depth"), &SvoNavmesh::get_DR_min_depth);
-    ClassDB::bind_method(D_METHOD("set_DR_min_depth", "depth"), &SvoNavmesh::set_DR_min_depth);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "DrawRef_minDepth"), "set_DR_min_depth", "get_DR_min_depth");
-    ClassDB::bind_method(D_METHOD("get_DR_max_depth"), &SvoNavmesh::get_DR_max_depth);
-    ClassDB::bind_method(D_METHOD("set_DR_max_depth", "depth"), &SvoNavmesh::set_DR_max_depth);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "DrawRef_maxDepth"), "set_DR_max_depth", "get_DR_max_depth");
-
-    // button method
     ClassDB::bind_method(D_METHOD("rebuild_svo"), &SvoNavmesh::rebuild_svo);
-    ClassDB::bind_method(D_METHOD("refresh_svo"), &SvoNavmesh::refresh_svo);
     ClassDB::bind_method(D_METHOD("clear_svo"), &SvoNavmesh::clear_svo);
 }
 
@@ -56,9 +43,6 @@ SvoNavmesh::SvoNavmesh(){
     maxDepth = 3;
     voxelSize = 1.0f;
     testdouble = 1.14;
-
-    DrawRef_minDepth = 1;
-    DrawRef_maxDepth = 3;
 
     svo = new SparseVoxelOctree();
 }
@@ -80,10 +64,6 @@ Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
     local_position = Quaternion(euler_angles_radians).inverse().xform(local_position - offset_position); // 应用偏移和旋转
     return local_position / voxelSize; // 转换到网格坐标
 }
-bool globalDepthCheck(int depth) {
-    if (depth< global_min_depth || depth>global_max_depth) return false;
-    else return true;
-}
 
 void SvoNavmesh::insert_voxel(Vector3 world_position) {
     Vector3 grid_position = worldToGrid(world_position);
@@ -95,30 +75,17 @@ void SvoNavmesh::insert_voxel(Vector3 world_position) {
         return;
     }
 
-    refresh_svo();
-    svo->insert(grid_position);
+    svo->insert(grid_position.x, grid_position.y, grid_position.z);
 }
 bool SvoNavmesh::query_voxel(Vector3 world_position) {
     Vector3 grid_position = worldToGrid(world_position);
-    return svo->query(grid_position);
-}
-void SvoNavmesh::update_voxel(Vector3 world_position, bool isSolid) {
-    Vector3 grid_position = worldToGrid(world_position);
-
-    // 检查网格坐标是否有效(即在根节点范围内)
-    if (grid_position.x < -voxelSize / 2 || grid_position.y < -voxelSize / 2 || grid_position.z < -voxelSize / 2 ||
-        grid_position.x >= voxelSize / 2 || grid_position.y >= voxelSize / 2 || grid_position.z >= voxelSize / 2) {
-        ERR_PRINT("Voxel coordinates out of valid range.");
-        return;
-    }
-
-    refresh_svo();
-    svo->update(grid_position, isSolid);
+    return svo->query(grid_position.x, grid_position.y, grid_position.z);
 }
 
 Vector3 SvoNavmesh::get_origin_position() const {
     return offset_position;
 }
+
 void SvoNavmesh::set_origin_position(Vector3 position) {
     offset_position = position;
 }
@@ -126,6 +93,7 @@ void SvoNavmesh::set_origin_position(Vector3 position) {
 Vector3 SvoNavmesh::get_origin_rotation() const {
     return offset_rotation;
 }
+
 void SvoNavmesh::set_origin_rotation(Vector3 rotation) {
     offset_rotation = rotation;
 }
@@ -133,78 +101,25 @@ void SvoNavmesh::set_origin_rotation(Vector3 rotation) {
 float SvoNavmesh::get_voxel_size() const {
     return voxelSize;
 }
+
 void SvoNavmesh::set_voxel_size(float size) {
-    if (voxelSize != size) {
-        voxelSize = size;
-    }
+    voxelSize = size;
+    svo->voxelSize = size;
 }
 
 int SvoNavmesh::get_max_depth() const {
     return maxDepth;
 }
-void SvoNavmesh::set_max_depth(int depth) {
-    if (!globalDepthCheck(depth)) {
-        ERR_PRINT("Depth out of setting range.(1-9)");
-        return;
-    }
-    if (maxDepth != depth) {
-        maxDepth = depth;
-    }
-}
 
-// debug draw set/get
-int SvoNavmesh::get_DR_min_depth() const {
-    return DrawRef_minDepth;
-}
-void SvoNavmesh::set_DR_min_depth(int depth) {
-    if (!globalDepthCheck(depth)) {
-        ERR_PRINT("Depth out of setting range.(1-9)");
-        return;
-    }
-    if (depth > DrawRef_maxDepth) {
-        DrawRef_minDepth = DrawRef_maxDepth;
-        return;
-    }
-    DrawRef_minDepth = depth;
-}
-int SvoNavmesh::get_DR_max_depth() const {
-    return DrawRef_maxDepth;
-}
-void SvoNavmesh::set_DR_max_depth(int depth) {
-    if (!globalDepthCheck(depth)) {
-        ERR_PRINT("Depth out of setting range.(1-9)");
-        return;
-    }
-    if (depth > maxDepth) {
-        DrawRef_maxDepth = maxDepth;
-        return;
-    }
-    DrawRef_maxDepth = depth;
+void SvoNavmesh::set_max_depth(int depth) {
+    maxDepth = depth;
+    svo->maxDepth = depth;
 }
 
 void SvoNavmesh::rebuild_svo() {
     svo->clear();
     // 根据当前的 voxelSize 重新构建 SVO
     // 逻辑类似于之前提到的重建逻辑
-}
-void SvoNavmesh::refresh_svo() {
-    if (svo->maxDepth != maxDepth) {
-        if (maxDepth < svo->maxDepth) {
-            // compress
-            svo->maxDepth = maxDepth;
-            svo->compress_node();
-        }
-        else {
-            // expand
-            svo->maxDepth = maxDepth;
-            svo->expand_node();
-        }
-    }
-    if (svo->voxelSize != voxelSize) {
-        svo->voxelSize = voxelSize;
-        // refresh center
-        svo->update_node_centers();
-    }
 }
 void SvoNavmesh::clear_svo(bool clear_setting) {
     if (clear_setting) {
@@ -243,7 +158,14 @@ void SvoNavmesh::_process(double delta) {
         memdelete(instance); // 确保释放内存
     }
     mesh_pool.clear();
-    draw_svo(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth); // 绘制从根节点到叶节点的全部层
+    draw_svo(svo->root, 1, 1, maxDepth); // 绘制从根节点到叶节点的全部层
+}
+
+Vector3 octant_offset(int index, float size) {
+    int x = (index & 1) ? size : 0;
+    int y = (index & 2) ? size : 0;
+    int z = (index & 4) ? size : 0;
+    return Vector3(x, y, z);
 }
 
 void SvoNavmesh::draw_svo(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
@@ -279,7 +201,7 @@ void SvoNavmesh::draw_svo(OctreeNode* node, int current_depth, int min_depth, in
 
         // 设置材料
         Ref<StandardMaterial3D> material = Ref<StandardMaterial3D>(memnew(StandardMaterial3D));
-        if (node->voxel && node->voxel->isSolid())
+        if (node->voxel && node->voxel->isSolid)
         {
             material->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
             material->set_albedo(Color(0.2, 1.0, 0.2, 0.2));  // 半透明绿色
@@ -309,10 +231,6 @@ void SvoNavmesh::draw_svo(OctreeNode* node, int current_depth, int min_depth, in
         add_child(mesh_instance);
         mesh_pool.push_back(mesh_instance);
 
-    }
-
-    if (node->isHomogeneous) {
-        return;
     }
 
     // 递归遍历子节点

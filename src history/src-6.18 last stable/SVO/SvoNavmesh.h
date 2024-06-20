@@ -23,12 +23,6 @@ namespace godot {
         Vector3 worldToGrid(Vector3 world_position);
 
         // debug draw
-        int DrawRef_minDepth;
-        int DrawRef_maxDepth;
-        int get_DR_min_depth() const;
-        void set_DR_min_depth(int depth);
-        int get_DR_max_depth() const;
-        void set_DR_max_depth(int depth);
         Vector<MeshInstance3D*> mesh_pool;  // 对象池
         Vector<MeshInstance3D*> active_meshes;  // 活跃的 MeshInstance 列表
         void draw_svo(OctreeNode* node, int current_depth, int min_depth, int max_depth);
@@ -46,7 +40,6 @@ namespace godot {
 
         void insert_voxel(Vector3 position);
         bool query_voxel(Vector3 position);
-        void update_voxel(Vector3 position, bool isSolid);
 
         //svo setting
         Vector3 get_origin_position() const;
@@ -59,7 +52,6 @@ namespace godot {
         void set_max_depth(int depth);
         SparseVoxelOctree& get_svo();
         void rebuild_svo();
-        void refresh_svo();
         void clear_svo(bool clear_setting);
 
         //bind test

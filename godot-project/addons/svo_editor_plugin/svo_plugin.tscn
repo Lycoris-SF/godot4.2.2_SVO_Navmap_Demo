@@ -7,12 +7,26 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Rebuild Button" type="Button" parent="."]
+[node name="HBoxContainer Rebuild" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(0, 35)
 layout_mode = 2
+
+[node name="Rebuild Button" type="Button" parent="HBoxContainer Rebuild"]
+custom_minimum_size = Vector2(200, 35)
+layout_mode = 2
+size_flags_horizontal = 0
 text = "Rebuild SVO
 "
 
+[node name="Refresh Button" type="Button" parent="HBoxContainer Rebuild"]
+custom_minimum_size = Vector2(200, 35)
+layout_mode = 2
+size_flags_horizontal = 10
+text = "Refresh SVO
+"
+
 [node name="HBoxContainer Clear" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(0, 35)
 layout_mode = 2
 
 [node name="ClearAll Button" type="Button" parent="HBoxContainer Clear"]
@@ -37,6 +51,7 @@ text = "Clear SVO
 "
 
 [node name="HBoxContainer Insert" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(0, 35)
 layout_mode = 2
 
 [node name="LabelX" type="Label" parent="HBoxContainer Insert"]
@@ -85,3 +100,57 @@ custom_arrow_step = 1.0
 custom_minimum_size = Vector2(10, 0)
 layout_mode = 2
 text = "Insert"
+
+[node name="HBoxContainer Update" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(0, 35)
+layout_mode = 2
+
+[node name="LabelX" type="Label" parent="HBoxContainer Update"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.717199, 2.05759e-06, 3.85046e-07, 1)
+text = "X"
+vertical_alignment = 1
+
+[node name="SpinBoxX" type="SpinBox" parent="HBoxContainer Update"]
+layout_mode = 2
+step = 0.0
+allow_greater = true
+allow_lesser = true
+suffix = "px"
+custom_arrow_step = 1.0
+
+[node name="LabelY" type="Label" parent="HBoxContainer Update"]
+layout_mode = 2
+theme_override_colors/font_color = Color(3.56168e-06, 0, 0.881772, 1)
+text = "Y"
+vertical_alignment = 1
+
+[node name="SpinBoxY" type="SpinBox" parent="HBoxContainer Update"]
+layout_mode = 2
+step = 0.0
+allow_greater = true
+allow_lesser = true
+suffix = "px"
+custom_arrow_step = 1.0
+
+[node name="LabelZ" type="Label" parent="HBoxContainer Update"]
+layout_mode = 2
+theme_override_colors/font_color = Color(2.32231e-06, 0.500788, 9.62615e-08, 1)
+text = "Z"
+vertical_alignment = 1
+
+[node name="SpinBoxZ" type="SpinBox" parent="HBoxContainer Update"]
+layout_mode = 2
+step = 0.0
+allow_greater = true
+allow_lesser = true
+suffix = "px"
+custom_arrow_step = 1.0
+
+[node name="Update Button" type="Button" parent="HBoxContainer Update"]
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+text = "Update"
+
+[node name="CheckBox" type="CheckBox" parent="HBoxContainer Update"]
+layout_mode = 2
