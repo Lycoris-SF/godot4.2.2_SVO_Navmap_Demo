@@ -1,10 +1,6 @@
 #pragma once
 
 #include <godot_cpp/variant/vector3.hpp>
-#include <godot_cpp/classes/mesh_instance3d.hpp>
-#include <godot_cpp/classes/box_mesh.hpp>
-#include <godot_cpp/classes/standard_material3d.hpp>
-#include <godot_cpp/classes/shader_material.hpp>
 
 namespace godot {
     enum VoxelState {
@@ -20,13 +16,12 @@ namespace godot {
         Voxel();
         Voxel(VoxelState state, float voxel_size);
         bool isSolid();
-        bool isEmpty();
-        bool isLiquid();
     };
 
     class OctreeNode {
     public:
-        bool isLeaf;        // 表示该节点是否为叶子节点
+        bool isLeaf;
+        bool isHomogeneous; // 表示该节点是否为同质节点
         int currentDepth;
         int currentIndex;
         Vector3 center;
@@ -35,15 +30,9 @@ namespace godot {
         OctreeNode* children[8];
         OctreeNode* neighbors[6];
 
-        // debug draw
-        MeshInstance3D* debugMesh;
-        Ref<BoxMesh> debugBoxMesh;
-        static Ref<StandardMaterial3D> debugSolidMaterial;
-        static Ref<ShaderMaterial> debugEmptyMaterial;
-        static Ref<Shader> EmptyMaterial_shader;
-
         OctreeNode(OctreeNode* father_node, int depth = -1, int index = -1);
         ~OctreeNode();
+        bool isEmpty() const;
     };
 
     class SparseVoxelOctree {
@@ -80,8 +69,8 @@ namespace godot {
         // other tool
         float calActualVoxelSize(int depth); // 计算实际体素大小
         void merge_children(OctreeNode* node);
-        void create_empty_children(OctreeNode* node, int depth);
-        void create_solid_children(OctreeNode* node, int depth);
+        void create_children(OctreeNode* node, int Depth);
+        void create_empty_children(OctreeNode* node, int Depth);
     };
 
 }

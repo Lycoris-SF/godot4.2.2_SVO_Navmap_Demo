@@ -3,6 +3,8 @@
 
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/core/class_db.hpp>
+#include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/shader_material.hpp>
 #include <godot_cpp/godot.hpp>
 #define global_min_depth 1
 #define global_max_depth 9
@@ -59,7 +61,6 @@ SvoNavmesh::SvoNavmesh(){
     DrawRef_maxDepth = 3;
 
     svo = new SparseVoxelOctree();
-    init_debugMesh(svo->root, 1);
 }
 
 SvoNavmesh::~SvoNavmesh() {
@@ -96,8 +97,6 @@ void SvoNavmesh::insert_voxel(Vector3 world_position) {
 
     refresh_svo();
     svo->insert(grid_position);
-    reset_pool();
-    init_debugMesh(svo->root, 1);
 }
 bool SvoNavmesh::query_voxel(Vector3 world_position) {
     Vector3 grid_position = worldToGrid(world_position);
@@ -185,8 +184,6 @@ void SvoNavmesh::set_DR_max_depth(int depth) {
 
 void SvoNavmesh::rebuild_svo() {
     svo->clear();
-    reset_pool();
-    init_debugMesh(svo->root, 1);
     // 根据当前的 voxelSize 重新构建 SVO
     // 逻辑类似于之前提到的重建逻辑
 }
@@ -208,8 +205,6 @@ void SvoNavmesh::refresh_svo() {
         // refresh center
         svo->update_node_centers();
     }
-    reset_pool();
-    init_debugMesh(svo->root, 1);
 }
 void SvoNavmesh::clear_svo(bool clear_setting) {
     if (clear_setting) {
@@ -224,8 +219,6 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
         // clear only svo
         svo->clear();
     }
-    reset_pool();
-    init_debugMesh(svo->root, 1);
 }
 
 SparseVoxelOctree& SvoNavmesh::get_svo() {
@@ -245,93 +238,15 @@ void SvoNavmesh::_process(double delta) {
     //draw_svo(svo->root, 1, 1, maxDepth);
 
     // 开销较大，但不会牵涉到godot子节点体积问题
-    /*for (MeshInstance3D* instance : mesh_pool) {
+    for (MeshInstance3D* instance : mesh_pool) {
         remove_child(instance);
         memdelete(instance); // 确保释放内存
     }
-    mesh_pool.clear();*/
-    // 以上仅用于draw_svo_v1
-
-    draw_svo_v2(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
-}
-
-void SvoNavmesh::reset_pool() { //牵涉到svo结构变化需要手动调用此方法
-    for (MeshInstance3D* instance : mesh_pool) {
-        remove_child(instance);
-    }
     mesh_pool.clear();
-}
-void SvoNavmesh::init_debugMesh(OctreeNode* node, int depth)    //牵涉到svo结构变化需要手动调用此方法
-{
-    if (!node || depth > svo->maxDepth) return;  // 如果当前深度超过最大深度，停止递归
-
-    float size = 2 * voxelSize / pow(2, depth);   // 计算当前深度的体素尺寸
-
-    // 检查是否在指定深度范围内
-    if (depth <= svo->maxDepth) {
-        if (!node->debugMesh) { 
-            node->debugMesh = memnew(MeshInstance3D); 
-            // 创建 BoxMesh
-            node->debugBoxMesh = Ref<BoxMesh>(memnew(BoxMesh));
-        }
-        if(node->debugBoxMesh.is_null()) node->debugBoxMesh = Ref<BoxMesh>(memnew(BoxMesh));
-        node->debugBoxMesh->set_size(Vector3(size, size, size));  // 设置盒子大小
-        node->debugMesh->set_mesh(node->debugBoxMesh);
-
-        // 设置材料
-        if (node->voxel && node->voxel->isSolid())
-        {
-            node->debugMesh->set_material_override(node->debugSolidMaterial);
-        }
-        else {
-            node->debugMesh->set_material_override(node->debugEmptyMaterial);
-        }
-
-        add_child(node->debugMesh);
-        mesh_pool.push_back(node->debugMesh);
-    }
-
-    // 递归遍历子节点
-    for (int i = 0; i < 8; i++) {
-        if (node->children[i]) {
-            init_debugMesh(node->children[i], depth + 1);
-        }
-    }
-}
-void SvoNavmesh::draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
-    if (!node || current_depth > svo->maxDepth) return;  // 如果当前深度超过最大深度，停止递归
-
-    float size = 2 * voxelSize / pow(2, current_depth);   // 计算当前深度的体素尺寸
-
-    // 应用 offset_position 和 offset_rotation
-    Vector3 euler_angles_radians(
-        Math::deg_to_rad(offset_rotation.x),
-        Math::deg_to_rad(offset_rotation.y),
-        Math::deg_to_rad(offset_rotation.z)
-    );
-    Transform3D local_transform = Transform3D(Quaternion(euler_angles_radians), offset_position);
-    Vector3 global_pos = local_transform.xform(node->center);
-    Transform3D global_transform = local_transform.translated(global_pos);
-
-
-    // 检查是否在指定深度范围内
-    if (current_depth >= min_depth && current_depth <= max_depth) {
-        node->debugMesh->set_transform(global_transform);  // 设置体素的全局变换，包括位置和旋转
-        node->debugMesh->set_visible(true);
-    }
-    else {
-        node->debugMesh->set_visible(false);
-    }
-
-    // 递归遍历子节点
-    for (int i = 0; i < 8; i++) {
-        if (node->children[i]) {
-            draw_svo_v2(node->children[i], current_depth + 1, min_depth, max_depth); // 递归绘制子节点
-        }
-    }
+    draw_svo(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth); // 绘制从根节点到叶节点的全部层
 }
 
-void SvoNavmesh::draw_svo_v1(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
+void SvoNavmesh::draw_svo(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
     if (!node || current_depth > max_depth) return;  // 如果当前深度超过最大深度，停止递归
 
     float size = 2*voxelSize / pow(2, current_depth);   // 计算当前深度的体素尺寸
@@ -363,9 +278,9 @@ void SvoNavmesh::draw_svo_v1(OctreeNode* node, int current_depth, int min_depth,
         mesh_instance->set_transform(global_transform);  // 设置体素的全局变换，包括位置和旋转
 
         // 设置材料
+        Ref<StandardMaterial3D> material = Ref<StandardMaterial3D>(memnew(StandardMaterial3D));
         if (node->voxel && node->voxel->isSolid())
         {
-            Ref<StandardMaterial3D> material = Ref<StandardMaterial3D>(memnew(StandardMaterial3D));
             material->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
             material->set_albedo(Color(0.2, 1.0, 0.2, 0.2));  // 半透明绿色
             mesh_instance->set_material_override(material);
@@ -396,19 +311,19 @@ void SvoNavmesh::draw_svo_v1(OctreeNode* node, int current_depth, int min_depth,
 
     }
 
-    if (!node->voxel->isLiquid()) {
+    if (node->isHomogeneous) {
         return;
     }
 
     // 递归遍历子节点
     for (int i = 0; i < 8; i++) {
         if (node->children[i]) {
-            draw_svo_v1(node->children[i], current_depth + 1, min_depth, max_depth); // 递归绘制子节点
+            draw_svo(node->children[i], current_depth + 1, min_depth, max_depth); // 递归绘制子节点
         }
     }
 }
-//小开销版所需方法依赖，仅用于draw_svo_v1
-/*MeshInstance3D* SvoNavmesh::get_mesh_instance_from_pool() {
+//小开销版所需方法依赖
+MeshInstance3D* SvoNavmesh::get_mesh_instance_from_pool() {
     if (mesh_pool.size() > 0) {
         MeshInstance3D* instance = mesh_pool[mesh_pool.size() - 1]; // 获取最后一个元素
         mesh_pool.remove_at(mesh_pool.size() - 1); // 移除最后一个元素
@@ -426,4 +341,4 @@ void SvoNavmesh::clear_mesh_instances() {
         recycle_mesh_instance(active_meshes[i]);
     }
     active_meshes.clear();
-}*/
+}

@@ -2,8 +2,9 @@
 
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/variant/vector3.hpp>
+#include <godot_cpp/classes/mesh_instance3d.hpp>
+#include <godot_cpp/classes/box_mesh.hpp>
 #include <godot_cpp/templates/vector.hpp>
-
 #include "SVO_structure.h"
 
 namespace godot {
@@ -29,15 +30,11 @@ namespace godot {
         int get_DR_max_depth() const;
         void set_DR_max_depth(int depth);
         Vector<MeshInstance3D*> mesh_pool;  // 对象池
-        //Vector<MeshInstance3D*> active_meshes;  // 活跃的 MeshInstance 列表
-
-        void init_debugMesh(OctreeNode* node, int depth);
-        void reset_pool();
-        void draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth);
-        void draw_svo_v1(OctreeNode* node, int current_depth, int min_depth, int max_depth);
-        //MeshInstance3D* get_mesh_instance_from_pool();
-        //void recycle_mesh_instance(MeshInstance3D* instance);
-        //void clear_mesh_instances();
+        Vector<MeshInstance3D*> active_meshes;  // 活跃的 MeshInstance 列表
+        void draw_svo(OctreeNode* node, int current_depth, int min_depth, int max_depth);
+        MeshInstance3D* get_mesh_instance_from_pool();
+        void recycle_mesh_instance(MeshInstance3D* instance);
+        void clear_mesh_instances();
 
     protected:
         static void _bind_methods();
