@@ -1,6 +1,16 @@
-#include "svo_structure.h"
+#include "SVO_structure.h"
+#include <godot_cpp/templates/vector.hpp>
+#include <cmath>
+#include <algorithm>
+#include <queue>
+#include <map>
+#include <set>
 
 using namespace godot;
+
+Ref<StandardMaterial3D> OctreeNode::debugSolidMaterial;
+Ref<ShaderMaterial> OctreeNode::debugEmptyMaterial;
+Ref<Shader> OctreeNode::EmptyMaterial_shader;
 
 Voxel::Voxel() { state = VS_EMPTY; size = 1.0f; }
 Voxel::Voxel(VoxelState voxel_state = VS_EMPTY, float voxel_size = 1.0f):state(voxel_state), size(voxel_size){}
@@ -28,6 +38,24 @@ OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) :
         neighbors[i] = nullptr;  // 初始化所有邻居指针为 nullptr
     }
     center = Vector3(0, 0, 0);
+
+    // debug draw
+    if (debugSolidMaterial.is_null()) debugSolidMaterial = Ref<StandardMaterial3D>(memnew(StandardMaterial3D));
+    debugSolidMaterial->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+    debugSolidMaterial->set_albedo(Color(0.2, 1.0, 0.2, 0.2));  // 半透明绿色
+    if (debugEmptyMaterial.is_null()) debugEmptyMaterial = Ref<ShaderMaterial>(memnew(ShaderMaterial));
+    if (EmptyMaterial_shader.is_null()) {
+        EmptyMaterial_shader = Ref<Shader>(memnew(Shader));
+        EmptyMaterial_shader->set_code(R"(
+            shader_type spatial;
+            render_mode wireframe,cull_disabled;
+
+            void fragment() {
+                ALBEDO = vec3(1.0, 0.0, 0.0);
+            }
+        )");
+    }
+    debugEmptyMaterial->set_shader(EmptyMaterial_shader);
 }
 
 OctreeNode::~OctreeNode() {
@@ -35,12 +63,6 @@ OctreeNode::~OctreeNode() {
     for (int i = 0; i < 8; ++i) {
         if(children[i]) delete children[i];
     }
-    //TOFIX
-    if (debugMesh) {
-        memdelete(debugMesh);
-        debugMesh = nullptr;
-    }
-    debugBoxMesh.unref();
 }
 
 SparseVoxelOctree::SparseVoxelOctree() {

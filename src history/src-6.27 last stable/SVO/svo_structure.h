@@ -6,9 +6,10 @@
 #include <godot_cpp/variant/vector3.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/box_mesh.hpp>
+#include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/shader_material.hpp>
 
 namespace godot {
-
     enum VoxelState {
         VS_EMPTY,
         VS_SOLID,
@@ -38,11 +39,16 @@ namespace godot {
         OctreeNode* neighbors[6];
 
         // debug draw
-        MeshInstance3D* debugMesh;  // Leaked!
+        MeshInstance3D* debugMesh;
         Ref<BoxMesh> debugBoxMesh;
+        static Ref<StandardMaterial3D> debugSolidMaterial;
+        static Ref<ShaderMaterial> debugEmptyMaterial;
+        static Ref<Shader> EmptyMaterial_shader;
 
         OctreeNode(OctreeNode* father_node, int depth = -1, int index = -1);
         ~OctreeNode();
+        static void clear_static_material();
+        static void init_static_material();
     };
 
     class SparseVoxelOctree {

@@ -1,14 +1,12 @@
-#ifndef SVO_STRUCTURE_H
-#define SVO_STRUCTURE_H
-
-#include <godot_cpp/templates/vector.hpp>
+#pragma once
 
 #include <godot_cpp/variant/vector3.hpp>
 #include <godot_cpp/classes/mesh_instance3d.hpp>
 #include <godot_cpp/classes/box_mesh.hpp>
+#include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/shader_material.hpp>
 
 namespace godot {
-
     enum VoxelState {
         VS_EMPTY,
         VS_SOLID,
@@ -38,8 +36,11 @@ namespace godot {
         OctreeNode* neighbors[6];
 
         // debug draw
-        MeshInstance3D* debugMesh;  // Leaked!
+        MeshInstance3D* debugMesh;
         Ref<BoxMesh> debugBoxMesh;
+        static Ref<StandardMaterial3D> debugSolidMaterial;
+        static Ref<ShaderMaterial> debugEmptyMaterial;
+        static Ref<Shader> EmptyMaterial_shader;
 
         OctreeNode(OctreeNode* father_node, int depth = -1, int index = -1);
         ~OctreeNode();
@@ -63,9 +64,6 @@ namespace godot {
         void expand_node();
         void clear();
 
-        // other tool
-        float calActualVoxelSize(int depth); // 计算实际体素大小
-
     private:
         void insert(OctreeNode* node, Vector3 pos, Vector3 center, int depth);
         bool query(OctreeNode* node, Vector3 pos, Vector3 center, int depth) const;
@@ -80,11 +78,10 @@ namespace godot {
         void deleteChildren(OctreeNode* node);
         void deleteNode(OctreeNode* node);  // 递归删除节点
         // other tool
+        float calActualVoxelSize(int depth); // 计算实际体素大小
         void merge_children(OctreeNode* node);
         void create_empty_children(OctreeNode* node, int depth);
         void create_solid_children(OctreeNode* node, int depth);
     };
 
 }
-
-#endif // SVO_STRUCTURE_H

@@ -200,7 +200,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TYPED_METHOD_BIND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -216,7 +216,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TYPED_METHOD_BIND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -262,17 +262,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\register\register_types.cpp" />
-    <ClCompile Include="src\SVO\SvoNavmesh.cpp" />
-    <ClCompile Include="src\SVO\SvoNavmeshManager.cpp" />
-    <ClCompile Include="src\SVO\SVO_structure.cpp" />
+    <ClCompile Include="src\SVO\svo_navmesh.cpp" />
+    <ClCompile Include="src\SVO\svo_navmesh_manager.cpp" />
+    <ClCompile Include="src\SVO\svo_structure.cpp" />
     <ClCompile Include="src\Test\test_svo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\register\register_types.h" />
-    <ClInclude Include="src\SVO\SvoNavmesh.h" />
-    <ClInclude Include="src\SVO\SvoNavmeshManager.h" />
-    <ClInclude Include="src\SVO\SVO_structure.h" />
+    <ClInclude Include="src\SVO\svo_navmesh.h" />
+    <ClInclude Include="src\SVO\svo_navmesh_manager.h" />
+    <ClInclude Include="src\SVO\svo_structure.h" />
     <ClInclude Include="src\Test\test_svo.h" />
   </ItemGroup>
   <ItemGroup>

@@ -1,0 +1,62 @@
+[gd_scene load_steps=6 format=3 uid="uid://cxsi3pq1ljsd1"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_ja7nt"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wrdq5"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_j0tnb"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_tpdt6"]
+radius = 1.0
+height = 2.0
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_x17qd"]
+radius = 1.0
+
+[node name="SvoDemo" type="Node3D"]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.707107, 0.5, -0.5, 0, 0.707107, 0.707107, 0.707107, -0.5, 0.5, 0, 10, 0)
+light_color = Color(1, 1, 0.784314, 1)
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.974543, -0.116618, 0.191487, 0, 0.854078, 0.520145, -0.224203, -0.506904, 0.832335, 1, 2, 3)
+visible = false
+
+[node name="Land" type="Node3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Land"]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 10, 0, -2.5, 0)
+mesh = SubResource("BoxMesh_ja7nt")
+skeleton = NodePath("../..")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="Land/MeshInstance3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Land/MeshInstance3D/StaticBody3D"]
+shape = SubResource("BoxShape3D_wrdq5")
+
+[node name="TestBox" type="Node3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TestBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0)
+mesh = SubResource("BoxMesh_ja7nt")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="TestBox/MeshInstance3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestBox/MeshInstance3D/StaticBody3D"]
+shape = SubResource("BoxShape3D_j0tnb")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="TestBox"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 0)
+mesh = SubResource("SphereMesh_tpdt6")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="TestBox/MeshInstance3D2"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestBox/MeshInstance3D2/StaticBody3D"]
+shape = SubResource("SphereShape3D_x17qd")
+
+[node name="SvoNavmesh" type="SvoNavmesh" parent="TestBox"]
+voxel_size = 2.1
+max_depth = 5
+DrawRef_maxDepth = 5

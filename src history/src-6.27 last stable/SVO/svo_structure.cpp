@@ -2,6 +2,36 @@
 
 using namespace godot;
 
+Ref<StandardMaterial3D> OctreeNode::debugSolidMaterial;
+Ref<ShaderMaterial> OctreeNode::debugEmptyMaterial;
+Ref<Shader> OctreeNode::EmptyMaterial_shader;
+
+void OctreeNode::clear_static_material() {
+    OctreeNode::debugSolidMaterial.unref();
+    OctreeNode::debugEmptyMaterial.unref();
+    OctreeNode::EmptyMaterial_shader.unref();
+}
+void OctreeNode::init_static_material()
+{
+    // debug draw
+    if (debugSolidMaterial.is_null()) debugSolidMaterial.instantiate();
+    debugSolidMaterial->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+    debugSolidMaterial->set_albedo(Color(0.2, 1.0, 0.2, 0.2));  // °ëÍ¸Ã÷ÂÌÉ«
+    if (debugEmptyMaterial.is_null()) debugEmptyMaterial.instantiate();
+    if (EmptyMaterial_shader.is_null()) {
+        EmptyMaterial_shader.instantiate();
+        EmptyMaterial_shader->set_code(R"(
+            shader_type spatial;
+            render_mode wireframe,cull_disabled;
+
+            void fragment() {
+                ALBEDO = vec3(1.0, 0.0, 0.0);
+            }
+        )");
+    }
+    debugEmptyMaterial->set_shader(EmptyMaterial_shader);
+}
+
 Voxel::Voxel() { state = VS_EMPTY; size = 1.0f; }
 Voxel::Voxel(VoxelState voxel_state = VS_EMPTY, float voxel_size = 1.0f):state(voxel_state), size(voxel_size){}
 bool Voxel::isSolid()
@@ -35,12 +65,6 @@ OctreeNode::~OctreeNode() {
     for (int i = 0; i < 8; ++i) {
         if(children[i]) delete children[i];
     }
-    //TOFIX
-    if (debugMesh) {
-        memdelete(debugMesh);
-        debugMesh = nullptr;
-    }
-    debugBoxMesh.unref();
 }
 
 SparseVoxelOctree::SparseVoxelOctree() {

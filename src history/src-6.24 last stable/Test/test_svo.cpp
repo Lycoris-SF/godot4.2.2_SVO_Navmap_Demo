@@ -1,5 +1,5 @@
 #include "test_svo.h"
-#include "SVO/svo_structure.h"
+#include "SVO/SVO_structure.h"
 
 using namespace godot;
 
