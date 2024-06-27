@@ -63,12 +63,17 @@ SvoNavmesh::SvoNavmesh(){
     DrawRef_minDepth = 1;
     DrawRef_maxDepth = 3;
 
-    svo = new SparseVoxelOctree();
+    svo = memnew(SparseVoxelOctree);
     init_debugMesh(svo->root, 1);
 }
 
 SvoNavmesh::~SvoNavmesh() {
-    delete svo; // 清理动态分配的内存
+    memdelete(svo);
+    if (!waste_pool.is_empty()) {
+        for (MeshInstance3D* instance : waste_pool) {
+            instance->queue_free();
+        }
+    }
 }
 
 Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
@@ -435,11 +440,16 @@ void SvoNavmesh::_exit_tree(){
 }
 
 // debug draw
-void SvoNavmesh::reset_pool() { //牵涉到svo结构变化需要手动调用此方法
+//牵涉到svo结构变化需要手动调用此方法
+void SvoNavmesh::reset_pool() {
     for (MeshInstance3D* instance : mesh_pool) {
         remove_child(instance);
+        waste_pool.push_back(instance);
     }
     mesh_pool.clear();
+
+    //
+    WARN_PRINT(vformat("Waste pool count: %d", waste_pool.size()));
 }
 //牵涉到svo结构变化需要手动调用此方法
 void SvoNavmesh::init_debugMesh(OctreeNode* node, int depth)
@@ -450,10 +460,10 @@ void SvoNavmesh::init_debugMesh(OctreeNode* node, int depth)
 
     // 检查是否在指定深度范围内
     if (depth <= svo->maxDepth) {
-        if (!node->debugMesh) { 
-            node->debugMesh = memnew(MeshInstance3D); 
+        if (!node->debugMesh) {
+            node->debugMesh = memnew(MeshInstance3D);
         }
-        if(node->debugBoxMesh.is_null()) node->debugBoxMesh = Ref<BoxMesh>(memnew(BoxMesh));
+        if (node->debugBoxMesh.is_null()) node->debugBoxMesh = Ref<BoxMesh>(memnew(BoxMesh));
         node->debugBoxMesh->set_size(Vector3(size, size, size));  // 设置盒子大小
         node->debugMesh->set_mesh(node->debugBoxMesh);
 

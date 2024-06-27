@@ -31,13 +31,21 @@ OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) :
 }
 
 OctreeNode::~OctreeNode() {
-    if(voxel) delete voxel;
+    if (voxel) delete voxel;
+    //delete_debug_mesh();
     for (int i = 0; i < 8; ++i) {
-        if(children[i]) delete children[i];
+        if (children[i]) delete children[i];
     }
-    //TOFIX
+}
+void OctreeNode::delete_debug_mesh() {
     if (debugMesh) {
-        memdelete(debugMesh);
+        // 确保 debugMesh 的内容为空
+        if (debugMesh->is_inside_tree()) {
+            debugMesh->queue_free();  // 然后释放内存
+        }
+        else {
+            memdelete(debugMesh);
+        }
         debugMesh = nullptr;
     }
     debugBoxMesh.unref();
@@ -59,7 +67,7 @@ SparseVoxelOctree::SparseVoxelOctree(int max_depth, float voxel_size)
 }
 
 SparseVoxelOctree::~SparseVoxelOctree() {
-    delete root;
+    deleteNode(root);
 }
 
 float SparseVoxelOctree::calActualVoxelSize(int depth) {

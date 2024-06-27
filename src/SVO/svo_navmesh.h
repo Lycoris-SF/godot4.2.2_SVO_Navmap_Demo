@@ -49,6 +49,7 @@ namespace godot {
         int get_DR_max_depth() const;
         void set_DR_max_depth(int depth);
         Vector<MeshInstance3D*> mesh_pool;  // 对象池
+        Vector<MeshInstance3D*> waste_pool;  // 回收池
         //Vector<MeshInstance3D*> active_meshes;  // 活跃的 MeshInstance 列表
 
         void init_debugMesh(OctreeNode* node, int depth);
