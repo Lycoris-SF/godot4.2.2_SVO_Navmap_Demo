@@ -128,13 +128,13 @@
     <OutDir>$(SolutionDir)godot-project\bin\</OutDir>
     <IncludePath>$(SolutionDir)godot-cpp\gdextension;$(SolutionDir)godot-cpp\gen\include;$(SolutionDir)godot-cpp\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)godot-cpp\bin;$(LibraryPath)</LibraryPath>
-    <TargetName>godot_library</TargetName>
+    <TargetName>libgdexample.windows.template_debug.x86_64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_dev|x64'">
     <OutDir>$(SolutionDir)godot-project\bin\</OutDir>
     <IncludePath>$(SolutionDir)godot-cpp\gdextension;$(SolutionDir)godot-cpp\gen\include;$(SolutionDir)godot-cpp\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)godot-cpp\bin;$(LibraryPath)</LibraryPath>
-    <TargetName>godot_library</TargetName>
+    <TargetName>libgdexample.windows.template_debug.x86_64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_debug|x64'">
     <OutDir>$(SolutionDir)godot-project\bin\</OutDir>

@@ -66,14 +66,9 @@ SvoNavmesh::SvoNavmesh(){
     svo = memnew(SparseVoxelOctree);
     init_debugMesh(svo->root, 1);
 }
-
 SvoNavmesh::~SvoNavmesh() {
     memdelete(svo);
-    if (!waste_pool.is_empty()) {
-        for (MeshInstance3D* instance : waste_pool) {
-            instance->queue_free();
-        }
-    }
+    reset_wastepool();
 }
 
 Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
@@ -401,6 +396,10 @@ void SvoNavmesh::_process(double delta) {
 
     draw_svo_v2(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
 }
+void SvoNavmesh::_physics_process(double delta)
+{
+    //reset_wastepool();
+}
 static void init_static_material()
 {
     // debug draw
@@ -442,14 +441,25 @@ void SvoNavmesh::_exit_tree(){
 // debug draw
 //牵涉到svo结构变化需要手动调用此方法
 void SvoNavmesh::reset_pool() {
-    for (MeshInstance3D* instance : mesh_pool) {
-        remove_child(instance);
-        waste_pool.push_back(instance);
+    if (!mesh_pool.is_empty()) {
+        for (MeshInstance3D* instance : mesh_pool) {
+            remove_child(instance);
+            waste_pool.push_back(instance);
+            //instance->queue_free();
+        }
+        mesh_pool.clear();
     }
-    mesh_pool.clear();
 
     //
-    WARN_PRINT(vformat("Waste pool count: %d", waste_pool.size()));
+    //WARN_PRINT(vformat("Waste pool count: %d", waste_pool.size()));
+}
+void SvoNavmesh::reset_wastepool() {
+    if (!waste_pool.is_empty()) {
+        for (MeshInstance3D* instance : waste_pool) {
+            instance->queue_free();
+        }
+        waste_pool.clear();
+    }
 }
 //牵涉到svo结构变化需要手动调用此方法
 void SvoNavmesh::init_debugMesh(OctreeNode* node, int depth)

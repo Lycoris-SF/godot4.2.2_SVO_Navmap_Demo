@@ -43,7 +43,6 @@ namespace godot {
 
         OctreeNode(OctreeNode* father_node, int depth = -1, int index = -1);
         ~OctreeNode();
-        void delete_debug_mesh();
     };
 
     class SparseVoxelOctree {
@@ -79,7 +78,6 @@ namespace godot {
         void reevaluate_homogeneity_update(OctreeNode* node);
         // delete
         void deleteChildren(OctreeNode* node);
-        void deleteNode(OctreeNode* node);  // µÝ¹éÉ¾³ý½Úµã
         // other tool
         void merge_children(OctreeNode* node);
         void create_empty_children(OctreeNode* node, int depth);

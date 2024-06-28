@@ -29,45 +29,31 @@ OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) :
     }
     center = Vector3(0, 0, 0);
 }
-
 OctreeNode::~OctreeNode() {
-    if (voxel) delete voxel;
-    //delete_debug_mesh();
+    if (voxel) memdelete(voxel); 
+    if (!debugBoxMesh.is_null()) debugBoxMesh.unref();
+    if (!debugMesh) memdelete(debugMesh);
     for (int i = 0; i < 8; ++i) {
-        if (children[i]) delete children[i];
+        if (children[i]) memdelete(children[i]);  
+        children[i] = nullptr;
     }
-}
-void OctreeNode::delete_debug_mesh() {
-    if (debugMesh) {
-        // 确保 debugMesh 的内容为空
-        if (debugMesh->is_inside_tree()) {
-            debugMesh->queue_free();  // 然后释放内存
-        }
-        else {
-            memdelete(debugMesh);
-        }
-        debugMesh = nullptr;
-    }
-    debugBoxMesh.unref();
 }
 
 SparseVoxelOctree::SparseVoxelOctree() {
     maxDepth = 3;
     voxelSize = 1.0f;
-    root = new OctreeNode(nullptr,1,0);
-    root->voxel = new Voxel(VS_EMPTY, voxelSize);
-    create_empty_children(root,1);
-}
-
-SparseVoxelOctree::SparseVoxelOctree(int max_depth, float voxel_size)
-    : maxDepth(max_depth), voxelSize(voxel_size){
-    root = new OctreeNode(nullptr,1,0);
-    root->voxel = new Voxel(VS_EMPTY, voxelSize);
+    root = memnew(OctreeNode(nullptr, 1, 0));
+    root->voxel = memnew(Voxel(VS_EMPTY, voxelSize));
     create_empty_children(root, 1);
 }
-
+SparseVoxelOctree::SparseVoxelOctree(int max_depth, float voxel_size)
+    : maxDepth(max_depth), voxelSize(voxel_size){
+    root = memnew(OctreeNode(nullptr,1,0));
+    root->voxel = memnew(Voxel(VS_EMPTY, voxelSize));
+    create_empty_children(root, 1);
+}
 SparseVoxelOctree::~SparseVoxelOctree() {
-    deleteNode(root);
+    memdelete(root);
 }
 
 float SparseVoxelOctree::calActualVoxelSize(int depth) {
@@ -98,7 +84,7 @@ void SparseVoxelOctree::insert(Vector3 pos) {
 }
 void SparseVoxelOctree::insert(OctreeNode* node, Vector3 pos, Vector3 center, int depth) {
     if (depth == maxDepth) {
-        if (!node->voxel) new Voxel(VS_SOLID, calActualVoxelSize(depth));
+        if (!node->voxel) node->voxel = memnew(Voxel(VS_SOLID, calActualVoxelSize(depth)));
         else {
             node->voxel->state = VS_SOLID;
             node->voxel->size = calActualVoxelSize(depth);
@@ -112,8 +98,8 @@ void SparseVoxelOctree::insert(OctreeNode* node, Vector3 pos, Vector3 center, in
 
     for (int i = 0; i < 8; ++i) {
         if (!node->children[i]) {
-            node->children[i] = new OctreeNode(node, depth + 1, i);
-            node->children[i]->voxel = new Voxel(VS_EMPTY, calActualVoxelSize(depth));
+            node->children[i] = memnew(OctreeNode(node, depth + 1, i));
+            node->children[i]->voxel = memnew(Voxel(VS_EMPTY, calActualVoxelSize(depth)));
             if (depth+1 != maxDepth) node->children[i]->isLeaf = false;
 
             Vector3 childCenter = center + octant_offset(i, halfSize); // 计算子节点的中心
@@ -143,20 +129,19 @@ void SparseVoxelOctree::reevaluate_homogeneity_insert(OctreeNode* node) {
     }
 
     if (allSolid) {
-        if(!node->voxel) node->voxel = new Voxel(VS_SOLID, calActualVoxelSize(node->currentDepth));
+        if(!node->voxel) node->voxel = memnew(Voxel(VS_SOLID, calActualVoxelSize(node->currentDepth)));
         else {
             node->voxel->state = VS_SOLID;
         }
     }
     else if (anySolid) {
-        if (!node->voxel) node->voxel = new Voxel(VS_LIQUID, calActualVoxelSize(node->currentDepth));
+        if (!node->voxel) node->voxel = memnew(Voxel(VS_LIQUID, calActualVoxelSize(node->currentDepth)));
         else {
             node->voxel->state = VS_LIQUID;
         }
     }
     else {
-        delete node->voxel;
-        node->voxel = nullptr;
+        memdelete(node->voxel);
     }
 }
 
@@ -196,7 +181,7 @@ void SparseVoxelOctree::update(OctreeNode* node, Vector3 pos, Vector3 center, in
     // 检查是否达到最大深度
     if (depth == maxDepth) {
         if (!node->voxel) {
-            node->voxel = new Voxel(newState, calActualVoxelSize(depth));
+            node->voxel = memnew(Voxel(newState, calActualVoxelSize(depth)));
         }
         else {
             node->voxel->state = newState; // 更新体素的状态
@@ -212,8 +197,8 @@ void SparseVoxelOctree::update(OctreeNode* node, Vector3 pos, Vector3 center, in
 
     // 创建或继续更新子节点
     if (!node->children[index]) {
-        node->children[index] = new OctreeNode(node,depth + 1,index);
-        node->children[index]->voxel = new Voxel(VS_EMPTY, calActualVoxelSize(depth + 1));
+        node->children[index] = memnew(OctreeNode(node,depth + 1,index));
+        node->children[index]->voxel = memnew(Voxel(VS_EMPTY, calActualVoxelSize(depth + 1)));
         node->children[index]->center = center;
     }
 
@@ -249,23 +234,23 @@ void SparseVoxelOctree::reevaluate_homogeneity_update(OctreeNode* node) {
 
     if (!anyChildExists) {
         // 如果没有任何子节点存在，父节点应该是空的
-        delete node->voxel;
-        node->voxel = new Voxel(VS_EMPTY, calActualVoxelSize(node->currentDepth));
+        memdelete(node->voxel);
+        node->voxel = memnew(Voxel(VS_EMPTY, calActualVoxelSize(node->currentDepth)));
     }
     else if (allChildrenHomogeneousSolid) {
         // 所有子节点都是同质的实体
         if (node->voxel) node->voxel->state = VS_SOLID;
-        else node->voxel = new Voxel(VS_SOLID, calActualVoxelSize(node->currentDepth));
+        else node->voxel = memnew(Voxel(VS_SOLID, calActualVoxelSize(node->currentDepth)));
     }
     else if (anyChildSolid) {
         // 至少一个子节点是实体（占据或部分占据）
         if (node->voxel) node->voxel->state = VS_LIQUID;
-        else node->voxel = new Voxel(VS_LIQUID, calActualVoxelSize(node->currentDepth));
+        else node->voxel = memnew(Voxel(VS_LIQUID, calActualVoxelSize(node->currentDepth)));
     }
     else {
         // 所有子节点都存在，但都是空的
         if (node->voxel) node->voxel->state = VS_EMPTY;
-        else node->voxel = new Voxel(VS_EMPTY, calActualVoxelSize(node->currentDepth));
+        else node->voxel = memnew(Voxel(VS_EMPTY, calActualVoxelSize(node->currentDepth)));
     }
 }
 
@@ -341,7 +326,7 @@ void SparseVoxelOctree::merge_children(OctreeNode* node) {
 
     if (isOccupied) {
         if (!node->voxel) {
-            node->voxel = new Voxel(VS_SOLID, calActualVoxelSize(node->currentDepth));
+            node->voxel = memnew(Voxel(VS_SOLID, calActualVoxelSize(node->currentDepth)));
         }
         else {
             node->voxel->state = VS_SOLID;
@@ -352,8 +337,7 @@ void SparseVoxelOctree::merge_children(OctreeNode* node) {
         // TODEBUG
         // 如果没有子节点占据，则父节点也不占据
         if (node->voxel) {
-            delete node->voxel;
-            node->voxel = nullptr;
+            memdelete(node->voxel);
         }
         node->isLeaf = false;
     }
@@ -361,8 +345,8 @@ void SparseVoxelOctree::merge_children(OctreeNode* node) {
 void SparseVoxelOctree::create_empty_children(OctreeNode* node, int depth) {
     node->isLeaf = false;
     for (int i = 0; i < 8; ++i) {
-        if(!node->children[i]) node->children[i] = new OctreeNode(node, depth + 1, i);
-        if (!node->children[i]->voxel) node->children[i]->voxel = new Voxel(VS_EMPTY, calActualVoxelSize(depth));
+        if(!node->children[i]) node->children[i] = memnew(OctreeNode(node, depth + 1, i));
+        if (!node->children[i]->voxel) node->children[i]->voxel = memnew(Voxel(VS_EMPTY, calActualVoxelSize(depth)));
         else {
             node->children[i]->voxel->state = VS_EMPTY;
             node->children[i]->voxel->size = calActualVoxelSize(depth);
@@ -378,8 +362,8 @@ void SparseVoxelOctree::create_empty_children(OctreeNode* node, int depth) {
 void SparseVoxelOctree::create_solid_children(OctreeNode* node, int depth) {
     node->isLeaf = false;
     for (int i = 0; i < 8; ++i) {
-        if (!node->children[i]) node->children[i] = new OctreeNode(node, depth + 1, i);
-        if (!node->children[i]->voxel) node->children[i]->voxel = new Voxel(VS_SOLID, calActualVoxelSize(depth));
+        if (!node->children[i]) node->children[i] = memnew(OctreeNode(node, depth + 1, i));
+        if (!node->children[i]->voxel) node->children[i]->voxel = memnew(Voxel(VS_SOLID, calActualVoxelSize(depth)));
         else {
             node->children[i]->voxel->state = VS_SOLID;
             node->children[i]->voxel->size = calActualVoxelSize(depth);
@@ -396,8 +380,8 @@ void SparseVoxelOctree::create_solid_children(OctreeNode* node, int depth) {
 void SparseVoxelOctree::deleteChildren(OctreeNode* node) {
     for (int i = 0; i < 8; ++i) {
         if (node->children[i]) {
-            deleteNode(node->children[i]);
-            node->children[i] = nullptr; // 确保指针被置为 nullptr，避免野指针
+            memdelete(node->children[i]); 
+            node->children[i] = nullptr;
         }
     }
     /*for (int i = 0; i < 8; ++i) {
@@ -405,30 +389,12 @@ void SparseVoxelOctree::deleteChildren(OctreeNode* node) {
         node->children[i] = nullptr;
     }*/
 }
-void SparseVoxelOctree::deleteNode(OctreeNode* node) {
-    // 递归地删除所有子节点
-    if (node != nullptr) {
-        for (int i = 0; i < 8; ++i) {
-            if (node->children[i] != nullptr) {
-                deleteNode(node->children[i]);  // 递归删除子节点
-                node->children[i] = nullptr;    // 清空指针
-            }
-        }
-        // 删除当前节点保存的体素（如果有）
-        if (node->voxel != nullptr) {
-            delete node->voxel;
-            node->voxel = nullptr;
-        }
-        // 删除当前节点本身
-        delete node;
-    }
-}
 void SparseVoxelOctree::clear() {
     // 删除整个树
-    deleteNode(root);
+    memdelete(root);
     // 重新初始化根节点
-    root = new OctreeNode(nullptr,1,0);
-    root->voxel = new Voxel(VS_EMPTY, voxelSize);
+    root = memnew(OctreeNode(nullptr,1,0));
+    root->voxel = memnew(Voxel(VS_EMPTY, voxelSize));
     create_empty_children(root, 1);
 }
 

@@ -54,6 +54,7 @@ namespace godot {
 
         void init_debugMesh(OctreeNode* node, int depth);
         void reset_pool();
+        void reset_wastepool();
         void draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth);
         void draw_svo_v1(OctreeNode* node, int current_depth, int min_depth, int max_depth);
         //MeshInstance3D* get_mesh_instance_from_pool();
@@ -98,6 +99,7 @@ namespace godot {
         float get_info();
 
         void _process(double delta);
+        void _physics_process(double delta);
         void _enter_tree();
         void _exit_tree();
     };

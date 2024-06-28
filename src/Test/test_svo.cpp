@@ -5,7 +5,7 @@ using namespace godot;
 
 int main() {
 
-    SparseVoxelOctree svo_test;  // 创建对象实例
+    //SparseVoxelOctree svo_test;  // 创建对象实例
 
     // 在这里添加测试代码
     // 例如：svo.insert(x, y, z); 或者 svo.query(x, y, z);
