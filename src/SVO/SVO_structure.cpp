@@ -1,4 +1,5 @@
 #include "svo_structure.h"
+#include "svo_navmesh.h"
 
 using namespace godot;
 
@@ -18,7 +19,7 @@ bool Voxel::isLiquid()
 }
 
 OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) : 
-    currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr), debugMesh(nullptr) 
+    currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr)//, debugMesh(nullptr)
 {
     father = father_node;
     for (int i = 0; i < 8; ++i) {
@@ -31,8 +32,14 @@ OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) :
 }
 OctreeNode::~OctreeNode() {
     if (voxel) memdelete(voxel); 
-    if (!debugBoxMesh.is_null()) debugBoxMesh.unref();
-    if (!debugMesh) memdelete(debugMesh);
+    if (!debugBoxMesh.is_null()) { 
+        debugBoxMesh.unref(); 
+    }
+    debugMesh.queue_free();
+    /*if (!debugMesh.is_null()) {
+        debugMesh.ptr()->queue_free();
+        mesh_count_log.test_countB++; 
+    }*/
     for (int i = 0; i < 8; ++i) {
         if (children[i]) memdelete(children[i]);  
         children[i] = nullptr;

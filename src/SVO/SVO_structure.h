@@ -38,7 +38,7 @@ namespace godot {
         OctreeNode* neighbors[6];
 
         // debug draw
-        MeshInstance3D* debugMesh;
+        MeshInstance3D debugMesh;
         Ref<BoxMesh> debugBoxMesh;
 
         OctreeNode(OctreeNode* father_node, int depth = -1, int index = -1);

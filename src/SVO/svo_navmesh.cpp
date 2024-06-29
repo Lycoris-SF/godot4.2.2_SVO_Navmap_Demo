@@ -1,5 +1,4 @@
 #include "svo_navmesh.h"
-#include "svo_structure.h"
 
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -63,12 +62,19 @@ SvoNavmesh::SvoNavmesh(){
     DrawRef_minDepth = 1;
     DrawRef_maxDepth = 3;
 
+    //
+    //mesh_count_log.log_textA = "memnew count: ";
+    //mesh_count_log.log_textB = "memdelete count: ";
+
     svo = memnew(SparseVoxelOctree);
     init_debugMesh(svo->root, 1);
 }
+
 SvoNavmesh::~SvoNavmesh() {
     memdelete(svo);
-    reset_wastepool();
+    //reset_wastepool();
+    //
+    //mesh_count_log.test_print();
 }
 
 Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
@@ -443,15 +449,17 @@ void SvoNavmesh::_exit_tree(){
 void SvoNavmesh::reset_pool() {
     if (!mesh_pool.is_empty()) {
         for (MeshInstance3D* instance : mesh_pool) {
-            remove_child(instance);
-            waste_pool.push_back(instance);
-            //instance->queue_free();
+            if (instance->is_inside_tree()) {
+                remove_child(instance);
+                //if (!waste_pool.has(instance)) waste_pool.push_back(instance);
+                //instance->queue_free();
+            }
         }
         mesh_pool.clear();
     }
 
     //
-    //WARN_PRINT(vformat("Waste pool count: %d", waste_pool.size()));
+    //UtilityFunctions::print(vformat("Waste pool count: %d", waste_pool.size()));
 }
 void SvoNavmesh::reset_wastepool() {
     if (!waste_pool.is_empty()) {
@@ -470,24 +478,25 @@ void SvoNavmesh::init_debugMesh(OctreeNode* node, int depth)
 
     // 检查是否在指定深度范围内
     if (depth <= svo->maxDepth) {
-        if (!node->debugMesh) {
+        /*if (!node->debugMesh) {
             node->debugMesh = memnew(MeshInstance3D);
-        }
+            mesh_count_log.test_countA++;
+        }*/
         if (node->debugBoxMesh.is_null()) node->debugBoxMesh = Ref<BoxMesh>(memnew(BoxMesh));
         node->debugBoxMesh->set_size(Vector3(size, size, size));  // 设置盒子大小
-        node->debugMesh->set_mesh(node->debugBoxMesh);
+        node->debugMesh.set_mesh(node->debugBoxMesh);
 
         // 设置材料
         if (node->voxel && node->voxel->isSolid())
         {
-            node->debugMesh->set_material_override(debugSolidMaterial);
+            node->debugMesh.set_material_override(debugSolidMaterial);
         }
         else {
-            node->debugMesh->set_material_override(debugEmptyMaterial);
+            node->debugMesh.set_material_override(debugEmptyMaterial);
         }
 
-        add_child(node->debugMesh);
-        mesh_pool.push_back(node->debugMesh);
+        add_child(&node->debugMesh);
+        mesh_pool.push_back(&node->debugMesh);
     }
 
     // 递归遍历子节点
@@ -515,11 +524,11 @@ void SvoNavmesh::draw_svo_v2(OctreeNode* node, int current_depth, int min_depth,
 
     // 检查是否在指定深度范围内
     if (current_depth >= min_depth && current_depth <= max_depth) {
-        node->debugMesh->set_transform(global_transform);  // 设置体素的全局变换，包括位置和旋转
-        node->debugMesh->set_visible(true);
+        node->debugMesh.set_transform(global_transform);  // 设置体素的全局变换，包括位置和旋转
+        node->debugMesh.set_visible(true);
     }
     else {
-        node->debugMesh->set_visible(false);
+        node->debugMesh.set_visible(false);
     }
 
     //TOFIX 

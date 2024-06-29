@@ -21,12 +21,15 @@
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
 
-#include "SVO_structure.h"
+#include "svo_structure.h"
+#include "Test/test_svo.h"
 
 namespace godot {
     static Ref<StandardMaterial3D> debugSolidMaterial;
     static Ref<ShaderMaterial> debugEmptyMaterial;
     static Ref<Shader> EmptyMaterial_shader;
+    // Test only
+    static TestLog mesh_count_log;
 
     class SvoNavmesh : public Node3D {
         GDCLASS(SvoNavmesh, Node3D)

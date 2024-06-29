@@ -1,7 +1,4 @@
 #include "test_svo.h"
-#include "SVO/svo_structure.h"
-
-using namespace godot;
 
 int main() {
 
@@ -12,4 +9,12 @@ int main() {
     //svo_test.insert(1, 1, 1);
 
     return 0;
+}
+
+TestLog::TestLog() : test_countA(0), test_countB(0), log_textA(""), log_textB("") {}
+
+void TestLog::test_print()
+{
+    std::cout << log_textA << test_countA << std::endl;
+    std::cout << log_textB << test_countB << std::endl;
 }
