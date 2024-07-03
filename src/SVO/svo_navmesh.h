@@ -36,13 +36,11 @@ namespace godot {
 
     private:
         SparseVoxelOctree *svo;
-        Vector3 offset_position; // 体素空间的相对位置
-        Vector3 offset_rotation; // 体素空间的相对旋转
+        Vector3 offset_position; // Offset position in voxel space
+        Vector3 offset_rotation; // Offset rotation in voxel space
         int maxDepth;
-        float voxelSize; // 体素大小
+        float voxelSize;    // size of the root cube
         double testdouble;
-
-        Vector3 worldToGrid(Vector3 world_position);
 
         // <debug draw>
         int DrawRef_minDepth;
@@ -51,9 +49,9 @@ namespace godot {
         void set_DR_min_depth(int depth);
         int get_DR_max_depth() const;
         void set_DR_max_depth(int depth);
-        Vector<MeshInstance3D*> mesh_pool;  // 对象池
-        Vector<MeshInstance3D*> waste_pool;  // 回收池
-        //Vector<MeshInstance3D*> active_meshes;  // 活跃的 MeshInstance 列表
+        Vector<MeshInstance3D*> mesh_pool;  // MeshInstance3D children in SvoNavmesh: Node3D
+        Vector<MeshInstance3D*> waste_pool;  // MeshInstance3D children to recycle
+        //Vector<MeshInstance3D*> active_meshes;  // active MeshInstance list
 
         void init_debugMesh(OctreeNode* node, int depth);
         void reset_pool();
@@ -65,7 +63,14 @@ namespace godot {
         //void clear_mesh_instances();
         // </debug draw>
 
-        // generate svo from collider
+        // <neighbors>
+        void init_neighbors();
+        void set_neighbors(OctreeNode* node);
+        void set_neighbors_from_brother(OctreeNode* node);
+        // </neighbors>
+
+        // tools
+        Vector3 worldToGrid(Vector3 world_position);
         void collect_collision_shapes(Node* node, RID &space_rid);
 
     protected:
@@ -81,26 +86,27 @@ namespace godot {
         void update_voxel(Vector3 position, bool isSolid);
 
         //svo setting
-        Vector3 get_origin_position() const;
-        void set_origin_position(Vector3 position);
-        Vector3 get_origin_rotation() const;
-        void set_origin_rotation(Vector3 rotation);
+        Vector3 get_offset_position() const;
+        void set_offset_position(Vector3 position);
+        Vector3 get_offset_rotation() const;
+        void set_offset_rotation(Vector3 rotation);
         float get_voxel_size() const;
         void set_voxel_size(float size);
         int get_max_depth() const;
         void set_max_depth(int depth);
         SparseVoxelOctree& get_svo();
+
+        // tools
         void rebuild_svo();
         void refresh_svo();
         void clear_svo(bool clear_setting);
-
-        // generate svo from collider
         void insert_svo_based_on_collision_shapes();
 
-        //bind test
+        // bind test
         void set_info(float p_info);
         float get_info();
 
+        // override
         void _process(double delta);
         void _physics_process(double delta);
         void _enter_tree();

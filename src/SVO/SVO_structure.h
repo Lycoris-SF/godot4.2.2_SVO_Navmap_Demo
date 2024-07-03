@@ -28,7 +28,7 @@ namespace godot {
 
     class OctreeNode {
     public:
-        bool isLeaf;        // 表示该节点是否为叶子节点
+        bool isLeaf;
         int currentDepth;
         int currentIndex;
         Vector3 center;
@@ -64,7 +64,7 @@ namespace godot {
         void clear();
 
         // other tool
-        float calActualVoxelSize(int depth); // 计算实际体素大小
+        float calActualVoxelSize(int depth);
 
     private:
         void insert(OctreeNode* node, Vector3 pos, Vector3 center, int depth);
