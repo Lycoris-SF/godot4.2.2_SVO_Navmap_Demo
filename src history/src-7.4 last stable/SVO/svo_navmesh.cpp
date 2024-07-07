@@ -50,9 +50,6 @@ void SvoNavmesh::_bind_methods() {
 
     // generate svo from collider
     ClassDB::bind_method(D_METHOD("insert_svo_based_on_collision_shapes"), &SvoNavmesh::insert_svo_based_on_collision_shapes);
-
-    // path finding
-    ClassDB::bind_method(D_METHOD("find_path_and_draw", "start", "end", "agent_r"), &SvoNavmesh::find_path_and_draw);
 }
 
 SvoNavmesh::SvoNavmesh(){
@@ -67,7 +64,7 @@ SvoNavmesh::SvoNavmesh(){
 
     svo = memnew(SparseVoxelOctree);
     init_neighbors();
-    init_debug_mesh(svo->root, 1);
+    init_debugMesh(svo->root, 1);
 }
 
 SvoNavmesh::~SvoNavmesh() {
@@ -88,7 +85,7 @@ static const int neighborsMap[8][3] = {
     {1, 3, 5}
 };
 // During set_neighbors_from_brother, each child node corresponds to an index in the father node's children array.
-// set_neighbors_from_brother时，每个子节点对应父节点的children数组中的索引
+// set_neighbors_from_brother时，，每个子节点对应父节点的children数组中的索引
 static const int childrenMap[8][3] = {
     {1, 2, 4}, // 子节点0需要查找的父节点的子节点索引
     {0, 3, 5}, // The index of the child node in the father node that needs to be searched for child node 1.
@@ -98,16 +95,6 @@ static const int childrenMap[8][3] = {
     {4, 7, 1},
     {7, 4, 2},
     {6, 5, 3}
-};
-// During get_neighbors, each direction corresponds to the index in the children array of the neighbor.
-// get_neighbors时，每个方向对应邻居的children数组中的索引
-static const int childDirectionMap[6][4] = {
-    {0, 2, 4, 6}, // +X 方向：西面，需要检查X=0的所有子节点
-    {1, 3, 5, 7}, // -X 方向：东面，需要检查X=1的所有子节点
-    {0, 1, 4, 5}, // +Y 方向：下面，需要检查Y=0的所有子节点
-    {2, 3, 6, 7}, // -Y 方向：上面，需要检查Y=1的所有子节点
-    {0, 1, 2, 3}, // +Z 方向：南面，需要检查Z=0的所有子节点
-    {4, 5, 6, 7}, // -Z 方向：北面，需要检查Z=1的所有子节点
 };
 
 /**
@@ -128,22 +115,7 @@ Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
     Transform3D global_transform = get_global_transform();
     Vector3 local_position = global_transform.xform_inv(world_position); // Global to local; 全局到局部
     local_position = Quaternion(euler_angles_radians).inverse().xform(local_position - offset_position); // Applying offsets; 应用偏移和旋转
-    return local_position; // Convert to grid coordinates; 转换到网格坐标
-}
-Vector3 SvoNavmesh::gridToWorld(Vector3 grid_position) {
-    Vector3 euler_angles_radians(
-        Math::deg_to_rad(offset_rotation.x),
-        Math::deg_to_rad(offset_rotation.y),
-        Math::deg_to_rad(offset_rotation.z)
-    );
-
-    // 将局部网格坐标转换回世界坐标
-    Quaternion rotation(euler_angles_radians);
-    Vector3 world_position = rotation.xform(grid_position + offset_position);
-
-    // 应用全局变换
-    Transform3D global_transform = get_global_transform();
-    return global_transform.xform(world_position);
+    return local_position / voxelSize; // Convert to grid coordinates; 转换到网格坐标
 }
 bool globalDepthCheck(int depth) {
     if (depth< global_min_depth || depth>global_max_depth) return false;
@@ -162,14 +134,14 @@ void SvoNavmesh::insert_voxel(Vector3 world_position) {
     // 检查网格坐标是否有效(即在根节点范围内)
     if (grid_position.x < -voxelSize / 2 || grid_position.y < -voxelSize / 2 || grid_position.z < -voxelSize / 2 ||
         grid_position.x >= voxelSize / 2 || grid_position.y >= voxelSize / 2 || grid_position.z >= voxelSize / 2) {
-        UtilityFunctions::print("insert: Position out of valid range.");
+        WARN_PRINT("Voxel coordinates out of valid range.");
         return;
     }
 
     refresh_svo();
     svo->insert(grid_position);
     reset_pool();
-    init_debug_mesh(svo->root, 1);
+    init_debugMesh(svo->root, 1);
     init_neighbors();
 }
 /**
@@ -179,15 +151,6 @@ void SvoNavmesh::insert_voxel(Vector3 world_position) {
  */
 bool SvoNavmesh::query_voxel(Vector3 world_position) {
     Vector3 grid_position = worldToGrid(world_position);
-
-    // Check if the grid coordinates are valid (i.e. within the root node range)
-    // 检查网格坐标是否有效(即在根节点范围内)
-    if (grid_position.x < -voxelSize / 2 || grid_position.y < -voxelSize / 2 || grid_position.z < -voxelSize / 2 ||
-        grid_position.x >= voxelSize / 2 || grid_position.y >= voxelSize / 2 || grid_position.z >= voxelSize / 2) {
-        UtilityFunctions::print("query: Position out of valid range.");
-        return false;
-    }
-
     return svo->query(grid_position);
 }
 //临时弃用; Temp Abandon
@@ -198,7 +161,7 @@ void SvoNavmesh::update_voxel(Vector3 world_position, bool isSolid) {
     // 检查网格坐标是否有效(即在根节点范围内)
     if (grid_position.x < -voxelSize / 2 || grid_position.y < -voxelSize / 2 || grid_position.z < -voxelSize / 2 ||
         grid_position.x >= voxelSize / 2 || grid_position.y >= voxelSize / 2 || grid_position.z >= voxelSize / 2) {
-        UtilityFunctions::print("update: Position out of valid range.");
+        WARN_PRINT("Voxel coordinates out of valid range.");
         return;
     }
 
@@ -281,11 +244,11 @@ void SvoNavmesh::rebuild_svo() {
 
     svo->clear();
     reset_pool();
-    init_debug_mesh(svo->root, 1);
+    init_debugMesh(svo->root, 1);
 
     insert_svo_based_on_collision_shapes();
     reset_pool();
-    init_debug_mesh(svo->root, 1);
+    init_debugMesh(svo->root, 1);
     init_neighbors();
 
     uint64_t end = Time::get_singleton()->get_ticks_msec();
@@ -314,7 +277,7 @@ void SvoNavmesh::refresh_svo() {
         svo->update_node_centers();
     }
     reset_pool();
-    init_debug_mesh(svo->root, 1);
+    init_debugMesh(svo->root, 1);
     init_neighbors();
 }
 /**
@@ -336,7 +299,7 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
         svo->clear();
     }
     reset_pool();
-    init_debug_mesh(svo->root, 1);
+    init_debugMesh(svo->root, 1);
     init_neighbors();
 }
 
@@ -528,7 +491,6 @@ void SvoNavmesh::_process(double delta) {
     // The above is only for draw_svo_v1(abandon)
 
     draw_svo_v2(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
-    //draw_debug_path();
 }
 void SvoNavmesh::_physics_process(double delta)
 {
@@ -585,14 +547,6 @@ void SvoNavmesh::reset_pool() {
         }
         mesh_pool.clear();
     }
-    if (!path_pool.is_empty()) {
-        // Clear existing path_pool if necessary
-        for (int i = 0; i < path_pool.size(); ++i) {
-            remove_child(path_pool[i]);
-            memdelete(path_pool[i]);
-        }
-        path_pool.clear();
-    }
 
     //
     //UtilityFunctions::print(vformat("Waste pool count: %d", waste_pool.size()));
@@ -610,7 +564,7 @@ void SvoNavmesh::reset_wastepool() {
  This method needs to be called manually if changes are involved in the svo structure.
  牵涉到svo结构变化需要手动调用此方法
  */
-void SvoNavmesh::init_debug_mesh(OctreeNode* node, int depth)
+void SvoNavmesh::init_debugMesh(OctreeNode* node, int depth)
 {
     if (!node || depth > svo->maxDepth) return;
 
@@ -643,7 +597,7 @@ void SvoNavmesh::init_debug_mesh(OctreeNode* node, int depth)
     // 递归遍历子节点
     for (int i = 0; i < 8; i++) {
         if (node->children[i]) {
-            init_debug_mesh(node->children[i], depth + 1);
+            init_debugMesh(node->children[i], depth + 1);
         }
     }
 }
@@ -842,271 +796,3 @@ void SvoNavmesh::clear_mesh_instances() {
     }
     active_meshes.clear();
 }*/
-
-// Helper function to calculate the heuristic based on Euclidean distance
-float heuristic(Vector3 a, Vector3 b) {
-    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);  // Manhattan distance
-    return a.distance_to(b);  // Euclidean distance
-}
-float heuristic(OctreeNode* a, OctreeNode* b) {
-    return heuristic(a->center, b->center);
-}
-
-// reconstruct path from came_from map
-Vector<Vector3> reconstruct_path(const Dictionary& came_from, const Vector3& end) {
-    Vector<Vector3> path;
-    Vector3 current = end;
-
-    path.insert(0, current); // Start with the end position
-    while (came_from.has(current)) {
-        current = came_from[current]; // Retrieve the next step in the path
-        path.insert(0, current);
-    }
-
-    return path; // Return the reconstructed path from start to end
-}
-
-// find the node with the lowest f-score
-OctreeNode* get_lowest_f_score_node(const Vector<OctreeNode*>& open_set, const Dictionary& f_score) {
-    OctreeNode* lowest = open_set[0];
-    float lowest_score = f_score[lowest->debugMesh.get_instance_id()];
-    for (int i = 1; i < open_set.size(); i++) {
-        OctreeNode* temp = open_set[i];
-        float score = f_score[temp->debugMesh.get_instance_id()];
-        if (score < lowest_score) {
-            lowest = temp;
-            lowest_score = score;
-        }
-    }
-    return lowest;
-}
-
-// get liquid neighbors' navigable children
-void add_liquid_children(Vector<OctreeNode*>& neighbors, OctreeNode* node, float agent_r, int direction) {
-    if (node->voxel->size/2 < agent_r) return; // 如果节点太小，不适合代理通过，停止递归
-
-    for (int j = 0; j < 4; ++j) {
-        OctreeNode* sub_neighbor = node->children[childDirectionMap[direction][j]];
-        if (!sub_neighbor) continue;
-        if (sub_neighbor->voxel->isLiquid()) {
-            add_liquid_children(neighbors, sub_neighbor, agent_r, direction); // 递归调用以检查更小的子节点
-        }
-        else if (sub_neighbor->voxel->isEmpty()) {
-            neighbors.push_back(sub_neighbor); // 空节点直接加入
-        }
-    }
-}
-// get navigable neighbors, considering SVO layers
-Vector<OctreeNode*> get_neighbors(OctreeNode* node, float agent_r) {
-    Vector<OctreeNode*> neighbors;
-
-    if (!node) return neighbors;
-
-    for (int i = 0; i < 6; ++i) {
-        OctreeNode* neighbor = node->neighbors[i];
-        if (!neighbor) continue;
-
-        if (neighbor->voxel->isLiquid()) {
-            // 对于液态节点，递归检查其子节点
-            add_liquid_children(neighbors, neighbor, agent_r, i);
-        }
-        else if (neighbor->voxel->isEmpty()) {
-            if (neighbor->voxel->size < agent_r) continue; // 如果节点太小，不适合代理通过
-            neighbors.push_back(neighbor); // 空节点直接加入
-        }
-    }
-    return neighbors;
-}
-
-// A* pathfinding with debug draw
-void SvoNavmesh::find_path_and_draw(const Vector3 start, const Vector3 end, float agent_r) {
-    if (query_voxel(start) || query_voxel(end)) {
-        UtilityFunctions::print("Point inside SOLID!");
-        return;
-    }
-
-    uint64_t begin_time = Time::get_singleton()->get_ticks_msec();
-
-    Vector<Vector3> path = find_path(start, end, agent_r);
-    if (path.is_empty()) {
-        UtilityFunctions::print("Path finding failed!");
-        return;
-    }
-
-    uint64_t end_time = Time::get_singleton()->get_ticks_msec();
-    WARN_PRINT_ED(vformat("Path finding with %d milliseconds", end_time - begin_time));
-
-    init_debug_path(path);
-}
-
-void SvoNavmesh::init_debug_path(const Vector<Vector3>& path) {
-    debug_path = path; // Store the path for later use
-
-    // 清除旧的调试对象
-    for (int i = 0; i < path_pool.size(); ++i) {
-        remove_child(path_pool[i]);
-        memdelete(path_pool[i]);
-    }
-    path_pool.clear();
-
-    // 创建用于调试的材料
-    Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
-    Ref<StandardMaterial3D> material2 = memnew(StandardMaterial3D);
-    material->set_albedo(Color(0.2, 0.2, 0.7)); // 蓝色
-    material2->set_albedo(Color(0.9, 0.6, 0.1)); // 红色
-
-    // 设置球形网格
-    Ref<SphereMesh> sphereMesh = memnew(SphereMesh);
-    sphereMesh->set_radius(0.02); // 球体半径
-    sphereMesh->set_height(0.04);
-
-    // 设置圆柱体网格
-    Ref<CylinderMesh> cylinderMesh = memnew(CylinderMesh);
-    cylinderMesh->set_bottom_radius(0.01); // 圆柱体半径
-    cylinderMesh->set_top_radius(0.01);
-    cylinderMesh->set_height(1);  // 默认高度，将会被缩放
-
-    // 创建路径点和连接线
-    for (int i = 0; i < path.size(); ++i) {
-        // 创建球形表示路径点
-        MeshInstance3D* sphere = memnew(MeshInstance3D);
-
-        Vector3 world_point = gridToWorld(path[i]);
-        //UtilityFunctions::print(vformat("world_point %d: %v", i, world_point));
-
-        sphere->set_mesh(sphereMesh);
-        sphere->set_material_override(material2);
-        sphere->set_transform(Transform3D(Basis(), world_point));
-
-        add_child(sphere);
-        path_pool.push_back(sphere);
-
-        // 如果不是最后一个点，创建圆柱体连接到下一个点
-        if (i < path.size() - 1) {
-            MeshInstance3D* cylinder = memnew(MeshInstance3D);
-
-            cylinder->set_mesh(cylinderMesh);
-            cylinder->set_material_override(material);
-
-            // 在两个路径点之间放置一个圆柱体
-            Vector3 next_world_point = gridToWorld(debug_path[i + 1]);
-            Vector3 direction = (next_world_point - world_point).normalized();
-            float distance = world_point.distance_to(next_world_point);
-            // 默认的向上方向
-            Vector3 up(0, 1, 0);
-            // 计算旋转轴
-            Vector3 rotation_axis = up.cross(direction).normalized();
-            // 计算旋转角度
-            float angle = acos(up.dot(direction));
-            // 设置圆柱体的变换
-            Transform3D transform;
-
-            if (angle != 0) {
-                // 创建四元数
-                Quaternion rotation(rotation_axis, angle);
-                transform.basis = Basis(rotation);
-            }
-            transform.origin = (world_point + next_world_point) * 0.5;
-            transform.basis.scale_local(Vector3(1, distance, 1)); // 圆柱体的缩放
-
-            cylinder->set_transform(transform);
-            add_child(cylinder);
-            path_pool.push_back(cylinder);
-        }
-    }
-}
-
-// A* pathfinding adapted for use with SVO
-Vector<Vector3> SvoNavmesh::find_path(const Vector3 start, const Vector3 end, float agent_r) {
-    Vector<OctreeNode*> open_set;
-    Dictionary came_from;
-    Dictionary g_score;
-    Dictionary f_score;
-
-    OctreeNode* start_node = svo->get_deepest_node(worldToGrid(start)); // Convert world coordinates to SVO grid coordinates
-    OctreeNode* end_node = svo->get_deepest_node(worldToGrid(end));
-
-    open_set.push_back(start_node);
-    g_score[start_node->debugMesh.get_instance_id()] = 0;
-    f_score[start_node->debugMesh.get_instance_id()] = heuristic(start_node, end_node);
-
-    while (!open_set.is_empty()) {
-        OctreeNode* current = get_lowest_f_score_node(open_set, f_score);
-        if (current == end_node) {
-            return reconstruct_path(came_from, current->center);
-        }
-
-        open_set.erase(current);
-        Vector<OctreeNode*> neighbors = get_neighbors(current, agent_r);
-
-        for (int i = 0; i < neighbors.size(); ++i) {
-            OctreeNode* neighbor = neighbors[i];
-
-            // 如果neighbor不在g_score中，将其初始化为非常高的值
-            if (!g_score.has(neighbor->debugMesh.get_instance_id())) {
-                g_score[neighbor->debugMesh.get_instance_id()] = std::numeric_limits<float>::max();  // 使用最大float值初始化
-            }
-
-            //float temp_current = (float)g_score[current];
-            float tentative_g_score = (float)g_score[current->debugMesh.get_instance_id()] + current->center.distance_to(neighbor->center);
-            //float temp_neighbor = (float)g_score[neighbor];
-
-            if (tentative_g_score < (float)g_score[neighbor->debugMesh.get_instance_id()]) {
-                came_from[neighbor->center] = current->center;
-                g_score[neighbor->debugMesh.get_instance_id()] = tentative_g_score;
-                f_score[neighbor->debugMesh.get_instance_id()] = tentative_g_score + heuristic(neighbor, end_node);
-
-                if (!open_set.has(neighbor)) {
-                    open_set.push_back(neighbor);
-                }
-            }
-        }
-    }
-    return Vector<Vector3>(); // Return empty path if no path found
-}
-
-Vector<Vector3> smooth_path_catmull_rom(const Vector<Vector3>& path) {
-    Vector<Vector3> smoothPath;
-    if (path.size() < 3) return path;
-
-    // 使用Catmull-Rom样条曲线平滑
-    for (int i = 1; i < path.size() - 2; i++) {
-        for (float t = 0; t < 1; t += 0.1) {
-            Vector3 pt = 0.5 * ((2 * path[i]) + (-path[i - 1] + path[i + 1]) * t +
-                (2 * path[i - 1] - 5 * path[i] + 4 * path[i + 1] - path[i + 2]) * t * t +
-                (-path[i - 1] + 3 * path[i] - 3 * path[i + 1] + path[i + 2]) * t * t * t);
-            smoothPath.push_back(pt);
-        }
-    }
-
-    return smoothPath;
-}
-
-// check if a direct path between two points is feasible
-bool can_traverse_directly(const Vector3& from, const Vector3& to) {
-    // TODO: obstacle check logic
-    return true;  // Assume no obstacles for simplicity
-}
-
-Vector<Vector3> smooth_path_floyd(const Vector<Vector3>& path) {
-    if (path.size() <= 2) {
-        return path; // No smoothing needed if path is already minimal
-    }
-
-    Vector<Vector3> smoothed_path;
-    smoothed_path.push_back(path[0]);  // Always include the start point
-
-    int last_valid_index = 0;  // Start with the first point
-    for (int i = 2; i < path.size(); i++) {
-        if (!can_traverse_directly(path[last_valid_index], path[i])) {
-            // If you cannot go directly from last valid to the current point,
-            // then the point before this one is necessary to include in the path
-            smoothed_path.push_back(path[i - 1]);
-            last_valid_index = i - 1;  // Update last valid point
-        }
-    }
-
-    smoothed_path.push_back(path[path.size() - 1]);  // Always include the end point
-
-    return smoothed_path;
-}

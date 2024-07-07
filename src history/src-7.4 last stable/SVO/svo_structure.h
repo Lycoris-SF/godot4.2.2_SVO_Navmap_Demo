@@ -57,7 +57,6 @@ namespace godot {
 
         void insert(Vector3 pos);
         bool query(Vector3 pos) const;
-        OctreeNode* get_deepest_node(Vector3 pos);
         void update(Vector3 pos, bool isSolid);
         void update_node_centers();
         void compress_node();
@@ -69,7 +68,7 @@ namespace godot {
 
     private:
         void insert(OctreeNode* node, Vector3 pos, Vector3 center, int depth);
-        bool query(OctreeNode* node, Vector3 pos) const;
+        bool query(OctreeNode* node, Vector3 pos, Vector3 center, int depth) const;
         void update(OctreeNode* node, Vector3 pos, Vector3 center, int depth, VoxelState newState);
         // functional update
         void update_node_centers(OctreeNode* node, Vector3 center, int depth);

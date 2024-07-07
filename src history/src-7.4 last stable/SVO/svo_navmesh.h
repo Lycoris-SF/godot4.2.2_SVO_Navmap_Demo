@@ -10,9 +10,6 @@
 #include <godot_cpp/classes/physics_body3d.hpp>
 #include <godot_cpp/classes/collision_shape3d.hpp>
 #include <godot_cpp/classes/box_shape3d.hpp>
-#include <godot_cpp/classes/box_mesh.hpp>
-#include <godot_cpp/classes/cylinder_mesh.hpp>
-#include <godot_cpp/classes/sphere_mesh.hpp>
 #include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/classes/shape3d.hpp>
 #include <godot_cpp/classes/array_mesh.hpp>
@@ -54,12 +51,9 @@ namespace godot {
         void set_DR_max_depth(int depth);
         Vector<MeshInstance3D*> mesh_pool;  // MeshInstance3D children in SvoNavmesh: Node3D
         Vector<MeshInstance3D*> waste_pool;  // MeshInstance3D children to recycle
-        Vector<Vector3> debug_path;
-        Vector<MeshInstance3D*> path_pool;
         //Vector<MeshInstance3D*> active_meshes;  // active MeshInstance list
 
-        void init_debug_mesh(OctreeNode* node, int depth);
-        void init_debug_path(const Vector<Vector3>& path);
+        void init_debugMesh(OctreeNode* node, int depth);
         void reset_pool();
         void reset_wastepool();
         void draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth);
@@ -77,7 +71,6 @@ namespace godot {
 
         // tools
         Vector3 worldToGrid(Vector3 world_position);
-        Vector3 gridToWorld(Vector3 grid_position);
         void collect_collision_shapes(Node* node, RID &space_rid);
 
     protected:
@@ -85,7 +78,7 @@ namespace godot {
 
     public:
         SvoNavmesh();
-        //SvoNavmesh(float size, Vector3 position, Vector3 rotation);
+        SvoNavmesh(float size, Vector3 position, Vector3 rotation);
         ~SvoNavmesh();
 
         void insert_voxel(Vector3 position);
@@ -112,10 +105,6 @@ namespace godot {
         // bind test
         void set_info(float p_info);
         float get_info();
-
-        // path finding
-        void find_path_and_draw(const Vector3 start, const Vector3 end, float agent_r);
-        Vector<Vector3> find_path(const Vector3 start, const Vector3 end, float agent_r);
 
         // override
         void _process(double delta);

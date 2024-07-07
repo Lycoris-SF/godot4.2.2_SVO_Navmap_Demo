@@ -151,9 +151,9 @@ void SparseVoxelOctree::reevaluate_homogeneity_insert(OctreeNode* node) {
 }
 
 bool SparseVoxelOctree::query(Vector3 pos) const {
-    return query(root, pos);
+    return query(root, pos, Vector3(0, 0, 0), 1);
 }
-bool SparseVoxelOctree::query(OctreeNode* node, Vector3 pos) const {
+bool SparseVoxelOctree::query(OctreeNode* node, Vector3 pos, Vector3 center, int depth) const {
     if (!node || !node->voxel) {
         return false;
     }
@@ -166,27 +166,16 @@ bool SparseVoxelOctree::query(OctreeNode* node, Vector3 pos) const {
         return true;
     }
 
-    if (node->currentDepth == maxDepth) {
+    if (depth == maxDepth) {
         return node->voxel->isSolid();
     }
 
-    int index = (pos.x >= node->center.x) | ((pos.y >= node->center.y) << 1) | ((pos.z >= node->center.z) << 2);
-    return query(node->children[index], pos);
-}
-OctreeNode* SparseVoxelOctree::get_deepest_node(Vector3 pos) {
-    OctreeNode* node = root;
-    while (node && !node->isLeaf) {
-        int index = (pos.x >= node->center.x) | ((pos.y >= node->center.y) << 1) | ((pos.z >= node->center.z) << 2);
-        if (node->children[index]) {
-            node = node->children[index];
-        }
-        else {
-            break;  
-        }
-    }
-    return node;
-}
+    float halfSize = voxelSize / pow(2, depth);
+    int index = (pos.x >= center.x) | ((pos.y >= center.y) << 1) | ((pos.z >= center.z) << 2);
+    updateCenterCoordinates(center, index, halfSize);
 
+    return query(node->children[index], pos, center, depth + 1);
+}
 
 //ÁÙÊ±ÆúÓÃ; Temp Abandon
 void SparseVoxelOctree::update(Vector3 pos, bool isSolid) {
@@ -419,3 +408,68 @@ void SparseVoxelOctree::clear() {
     root->voxel = memnew(Voxel(VS_EMPTY, voxelSize));
     create_empty_children(root, 1);
 }
+
+/*std::vector<Vector3> SparseVoxelOctree::find_path(Vector3 start, Vector3 end) const {
+    // A* algorithm
+    std::priority_queue<std::pair<float, Vector3>, std::vector<std::pair<float, Vector3>>, std::greater<std::pair<float, Vector3>>> open_set;
+    std::map<Vector3, Vector3> came_from;
+    std::map<Vector3, float> g_score;
+    std::map<Vector3, float> f_score;
+
+    Vector3 start_grid = worldToGrid(start.x, start.y, start.z);
+    Vector3 end_grid = worldToGrid(end.x, end.y, end.z);
+
+    g_score[start_grid] = 0.0f;
+    f_score[start_grid] = g_score[start_grid] + start_grid.distance_to(end_grid);
+
+    open_set.emplace(f_score[start_grid], start_grid);
+
+    while (!open_set.empty()) {
+        Vector3 current = open_set.top().second;
+        open_set.pop();
+
+        if (current == end_grid) {
+            return reconstruct_path(came_from, current);
+        }
+
+        std::vector<Vector3> neighbors = {
+            Vector3(current.x + 1, current.y, current.z),
+            Vector3(current.x - 1, current.y, current.z),
+            Vector3(current.x, current.y + 1, current.z),
+            Vector3(current.x, current.y - 1, current.z),
+            Vector3(current.x, current.y, current.z + 1),
+            Vector3(current.x, current.y, current.z - 1)
+        };
+
+        for (const Vector3& neighbor : neighbors) {
+            if (!query(neighbor.x, neighbor.y, neighbor.z)) {
+                continue;
+            }
+
+            float tentative_g_score = g_score[current] + current.distance_to(neighbor);
+
+            if (tentative_g_score < g_score[neighbor]) {
+                came_from[neighbor] = current;
+                g_score[neighbor] = tentative_g_score;
+                f_score[neighbor] = g_score[neighbor] + neighbor.distance_to(end_grid);
+                open_set.emplace(f_score[neighbor], neighbor);
+            }
+        }
+    }
+
+    return {}; // No path found
+}
+
+std::vector<Vector3> SparseVoxelOctree::reconstruct_path(const std::map<Vector3, Vector3>& came_from, Vector3 current) const {
+    std::vector<Vector3> total_path = { current };
+    auto it = came_from.find(current);
+
+    while (it != came_from.end()) {
+        current = it->second;
+        total_path.push_back(current);
+        it = came_from.find(current);
+    }
+
+    std::reverse(total_path.begin(), total_path.end());
+    return total_path;
+}*/
