@@ -843,9 +843,7 @@ void SvoNavmesh::clear_mesh_instances() {
     active_meshes.clear();
 }*/
 
-/**
- Helper function to calculate the heuristic based on Euclidean distance
- */
+// Helper function to calculate the heuristic based on Euclidean distance
 float heuristic(Vector3 a, Vector3 b) {
     return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);  // Manhattan distance
     return a.distance_to(b);  // Euclidean distance
@@ -854,9 +852,7 @@ float heuristic(OctreeNode* a, OctreeNode* b) {
     return heuristic(a->center, b->center);
 }
 
-/**
- reconstruct path from came_from map
- */
+// reconstruct path from came_from map
 Vector<Vector3> reconstruct_path(const Dictionary& came_from, const Vector3& end) {
     Vector<Vector3> path;
     Vector3 current = end;
@@ -870,9 +866,7 @@ Vector<Vector3> reconstruct_path(const Dictionary& came_from, const Vector3& end
     return path; // Return the reconstructed path from start to end
 }
 
-/**
- find the node with the lowest f-score
- */
+// find the node with the lowest f-score
 OctreeNode* get_lowest_f_score_node(const Vector<OctreeNode*>& open_set, const Dictionary& f_score) {
     OctreeNode* lowest = open_set[0];
     float lowest_score = f_score[lowest->debugMesh.get_instance_id()];
@@ -887,9 +881,7 @@ OctreeNode* get_lowest_f_score_node(const Vector<OctreeNode*>& open_set, const D
     return lowest;
 }
 
-/**
- get liquid neighbors' navigable children
- */
+// get liquid neighbors' navigable children
 void add_liquid_children(Vector<OctreeNode*>& neighbors, OctreeNode* node, float agent_r, int direction) {
     if (node->voxel->size/2 < agent_r) return; // 如果节点太小，不适合代理通过，停止递归
 
@@ -904,9 +896,7 @@ void add_liquid_children(Vector<OctreeNode*>& neighbors, OctreeNode* node, float
         }
     }
 }
-/**
- get navigable neighbors, considering SVO layers
- */
+// get navigable neighbors, considering SVO layers
 Vector<OctreeNode*> get_neighbors(OctreeNode* node, float agent_r) {
     Vector<OctreeNode*> neighbors;
 
@@ -917,7 +907,6 @@ Vector<OctreeNode*> get_neighbors(OctreeNode* node, float agent_r) {
         if (!neighbor) continue;
 
         if (neighbor->voxel->isLiquid()) {
-            // For a Liquid node, recursively check its child nodes
             // 对于液态节点，递归检查其子节点
             add_liquid_children(neighbors, neighbor, agent_r, i);
         }
@@ -929,13 +918,7 @@ Vector<OctreeNode*> get_neighbors(OctreeNode* node, float agent_r) {
     return neighbors;
 }
 
-/**
- * A* pathfinding with debug draw.
- *
- * @param start: The path start position(world).
- * @param end: The path end position(world).
- * @param agent_r: The radius of nav agent.
- */
+// A* pathfinding with debug draw
 void SvoNavmesh::find_path_and_draw(const Vector3 start, const Vector3 end, float agent_r) {
     if (query_voxel(start) || query_voxel(end)) {
         UtilityFunctions::print("Point inside SOLID!");
@@ -956,14 +939,9 @@ void SvoNavmesh::find_path_and_draw(const Vector3 start, const Vector3 end, floa
     init_debug_path(path);
 }
 
-/**
- init MeshInstance3D for path finding.
- For static debug draw only.
- */
 void SvoNavmesh::init_debug_path(const Vector<Vector3>& path) {
-    debug_path = path; // Store the path for else possible use
+    debug_path = path; // Store the path for later use
 
-    // Clear old debug children
     // 清除旧的调试对象
     for (int i = 0; i < path_pool.size(); ++i) {
         remove_child(path_pool[i]);
@@ -971,30 +949,26 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path) {
     }
     path_pool.clear();
 
-    // Create Materials for Debugging
     // 创建用于调试的材料
-    // Should use static ones instead
     Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
     Ref<StandardMaterial3D> material2 = memnew(StandardMaterial3D);
     material->set_albedo(Color(0.2, 0.2, 0.7)); // 蓝色
     material2->set_albedo(Color(0.9, 0.6, 0.1)); // 红色
 
-    // SphereMesh for path points
     // 设置球形网格
     Ref<SphereMesh> sphereMesh = memnew(SphereMesh);
     sphereMesh->set_radius(0.02); // 球体半径
     sphereMesh->set_height(0.04);
 
-    // CylinderMesh for path connecting lines
     // 设置圆柱体网格
     Ref<CylinderMesh> cylinderMesh = memnew(CylinderMesh);
     cylinderMesh->set_bottom_radius(0.01); // 圆柱体半径
     cylinderMesh->set_top_radius(0.01);
     cylinderMesh->set_height(1);  // 默认高度，将会被缩放
 
-    // Create path points & path connecting lines
     // 创建路径点和连接线
     for (int i = 0; i < path.size(); ++i) {
+        // 创建球形表示路径点
         MeshInstance3D* sphere = memnew(MeshInstance3D);
 
         Vector3 world_point = gridToWorld(path[i]);
@@ -1007,7 +981,6 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path) {
         add_child(sphere);
         path_pool.push_back(sphere);
 
-        // If it is not the last point, create a cylinder connecting to the next point
         // 如果不是最后一个点，创建圆柱体连接到下一个点
         if (i < path.size() - 1) {
             MeshInstance3D* cylinder = memnew(MeshInstance3D);
@@ -1015,7 +988,6 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path) {
             cylinder->set_mesh(cylinderMesh);
             cylinder->set_material_override(material);
 
-            // Place a cylinder between two waypoints
             // 在两个路径点之间放置一个圆柱体
             Vector3 next_world_point = gridToWorld(debug_path[i + 1]);
             Vector3 direction = (next_world_point - world_point).normalized();
@@ -1044,13 +1016,7 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path) {
     }
 }
 
-/**
- * A* pathfinding adapted for use with SVO.
- *
- * @param start: The path start position(world).
- * @param end: The path end position(world).
- * @param agent_r: The radius of nav agent.
- */
+// A* pathfinding adapted for use with SVO
 Vector<Vector3> SvoNavmesh::find_path(const Vector3 start, const Vector3 end, float agent_r) {
     Vector<OctreeNode*> open_set;
     Dictionary came_from;
@@ -1076,9 +1042,6 @@ Vector<Vector3> SvoNavmesh::find_path(const Vector3 start, const Vector3 end, fl
         for (int i = 0; i < neighbors.size(); ++i) {
             OctreeNode* neighbor = neighbors[i];
 
-            // If the neighbor is not in g_score, initialize it to a very high value.
-            // This is because in svo, we cannt init g_score for all the OctreeNodes before loops.
-            // std:: is used here, which is not good for godot regulation.
             // 如果neighbor不在g_score中，将其初始化为非常高的值
             if (!g_score.has(neighbor->debugMesh.get_instance_id())) {
                 g_score[neighbor->debugMesh.get_instance_id()] = std::numeric_limits<float>::max();  // 使用最大float值初始化
