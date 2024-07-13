@@ -1192,14 +1192,26 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path, float agent_r) {
     // SphereMesh for path points
     // 设置球形网格
     Ref<SphereMesh> sphereMesh = memnew(SphereMesh);
-    sphereMesh->set_radius(agent_r); // 球体半径
-    sphereMesh->set_height(agent_r*2);
+    if (agent_r > 0.0f) {
+        sphereMesh->set_radius(agent_r); // 球体半径
+        sphereMesh->set_height(agent_r * 2);
+    }
+    else {
+        sphereMesh->set_radius(0.02); // 球体半径
+        sphereMesh->set_height(0.04);
+    }
 
     // CylinderMesh for path connecting lines
     // 设置圆柱体网格
     Ref<CylinderMesh> cylinderMesh = memnew(CylinderMesh);
-    cylinderMesh->set_bottom_radius(agent_r/2); // 圆柱体半径
-    cylinderMesh->set_top_radius(agent_r/2);
+    if (agent_r > 0.0f) {
+        cylinderMesh->set_bottom_radius(agent_r / 2); // 圆柱体半径
+        cylinderMesh->set_top_radius(agent_r / 2);
+    }
+    else {
+        cylinderMesh->set_bottom_radius(0.01); // 圆柱体半径
+        cylinderMesh->set_top_radius(0.01);
+    }
     cylinderMesh->set_height(1);  // 默认高度，将会被缩放
 
     // Create path points & path connecting lines
