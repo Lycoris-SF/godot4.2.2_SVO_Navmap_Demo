@@ -15,6 +15,7 @@ void initialize_svo_module(ModuleInitializationLevel p_level) {
     }
 
     ClassDB::register_class<SvoNavmesh>();
+    ClassDB::register_class<OctreeNode>();
 }
 
 void uninitialize_svo_module(ModuleInitializationLevel p_level) {

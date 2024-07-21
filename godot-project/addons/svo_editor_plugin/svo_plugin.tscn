@@ -155,6 +155,27 @@ text = "Update"
 [node name="CheckBox" type="CheckBox" parent="HBoxContainer Update"]
 layout_mode = 2
 
+[node name="HBoxContainer ID Query" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(0, 35)
+layout_mode = 2
+
+[node name="Label ID" type="Label" parent="HBoxContainer ID Query"]
+layout_mode = 2
+text = "ID"
+vertical_alignment = 1
+
+[node name="LineEdit ID" type="LineEdit" parent="HBoxContainer ID Query"]
+custom_minimum_size = Vector2(170, 0)
+layout_mode = 2
+placeholder_text = "0"
+max_length = 9
+clear_button_enabled = true
+
+[node name="Check Voxel Info Button" type="Button" parent="HBoxContainer ID Query"]
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+text = "Check"
+
 [node name="HBoxContainer Path Start" type="HBoxContainer" parent="."]
 custom_minimum_size = Vector2(0, 35)
 layout_mode = 2

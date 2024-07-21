@@ -13,19 +13,11 @@ using namespace godot;
 void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("insert_voxel", "position"), &SvoNavmesh::insert_voxel);
     ClassDB::bind_method(D_METHOD("query_voxel", "position"), &SvoNavmesh::query_voxel);
+    ClassDB::bind_method(D_METHOD("check_voxel_with_id", "id"), &SvoNavmesh::check_voxel_with_id);
     ClassDB::bind_method(D_METHOD("update_voxel", "position", "isSolid"), &SvoNavmesh::update_voxel);
     ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmesh::get_info);
     ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmesh::set_info);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "testdouble"), "set_info", "get_info");
-    //ClassDB::bind_method(D_METHOD("find_path", "start", "end"), &SvoNavmesh::find_path);
-
-    ClassDB::bind_method(D_METHOD("get_origin_position"), &SvoNavmesh::get_offset_position);
-    ClassDB::bind_method(D_METHOD("set_origin_position", "position"), &SvoNavmesh::set_offset_position);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::VECTOR3, "origin_position"), "set_origin_position", "get_origin_position");
-
-    ClassDB::bind_method(D_METHOD("get_origin_rotation"), &SvoNavmesh::get_offset_rotation);
-    ClassDB::bind_method(D_METHOD("set_origin_rotation", "rotation"), &SvoNavmesh::set_offset_rotation);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::VECTOR3, "origin_rotation"), "set_origin_rotation", "get_origin_rotation");
 
     ClassDB::bind_method(D_METHOD("get_voxel_size"), &SvoNavmesh::get_voxel_size);
     ClassDB::bind_method(D_METHOD("set_voxel_size", "size"), &SvoNavmesh::set_voxel_size);
@@ -42,6 +34,9 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_DR_max_depth"), &SvoNavmesh::get_DR_max_depth);
     ClassDB::bind_method(D_METHOD("set_DR_max_depth", "depth"), &SvoNavmesh::set_DR_max_depth);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "DrawRef_maxDepth"), "set_DR_max_depth", "get_DR_max_depth");
+    ClassDB::bind_method(D_METHOD("get_show_empty"), &SvoNavmesh::get_show_empty);
+    ClassDB::bind_method(D_METHOD("set_show_empty", "show_empty"), &SvoNavmesh::set_show_empty);
+    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "show_empty"), "set_show_empty", "get_show_empty");
 
     // button method
     ClassDB::bind_method(D_METHOD("rebuild_svo"), &SvoNavmesh::rebuild_svo);
@@ -56,21 +51,22 @@ void SvoNavmesh::_bind_methods() {
 }
 
 SvoNavmesh::SvoNavmesh(){
-    offset_position = Vector3(0, 0, 0);
-    offset_rotation = Vector3(0, 0, 0);
     maxDepth = 3;
     voxelSize = 1.0f;
     testdouble = 1.14;
 
     DrawRef_minDepth = 1;
     DrawRef_maxDepth = 3;
+    show_empty = true;
+    debugChecked_node = nullptr;
 
     svo = memnew(SparseVoxelOctree);
     init_neighbors();
-    init_debug_mesh(svo->root, 1);
+    //init_debug_mesh(svo->root, 1);
 }
 
 SvoNavmesh::~SvoNavmesh() {
+    //call_deferred("reset_pool");
     memdelete(svo);
     //reset_wastepool();
 }
@@ -117,33 +113,13 @@ static const int childDirectionMap[6][4] = {
  * @returns The position in local coordinates of svo.
  */
 Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
-    Vector3 euler_angles_radians(
-        // Convert Euler angles from degrees to radians
-        // 将欧拉角从度转换为弧度
-        Math::deg_to_rad(offset_rotation.x),
-        Math::deg_to_rad(offset_rotation.y),
-        Math::deg_to_rad(offset_rotation.z)
-    );
-
     Transform3D global_transform = get_global_transform();
     Vector3 local_position = global_transform.xform_inv(world_position); // Global to local; 全局到局部
-    local_position = Quaternion(euler_angles_radians).inverse().xform(local_position - offset_position); // Applying offsets; 应用偏移和旋转
     return local_position; // Convert to grid coordinates; 转换到网格坐标
 }
 Vector3 SvoNavmesh::gridToWorld(Vector3 grid_position) {
-    Vector3 euler_angles_radians(
-        Math::deg_to_rad(offset_rotation.x),
-        Math::deg_to_rad(offset_rotation.y),
-        Math::deg_to_rad(offset_rotation.z)
-    );
-
-    // 将局部网格坐标转换回世界坐标
-    Quaternion rotation(euler_angles_radians);
-    Vector3 world_position = rotation.xform(grid_position + offset_position);
-
-    // 应用全局变换
     Transform3D global_transform = get_global_transform();
-    return global_transform.xform(world_position);
+    return global_transform.xform(grid_position);
 }
 bool globalDepthCheck(int depth) {
     if (depth< global_min_depth || depth>global_max_depth) return false;
@@ -167,8 +143,8 @@ void SvoNavmesh::insert_voxel(Vector3 world_position) {
     }
 
     refresh_svo();
-    svo->insert(grid_position);
     reset_pool();
+    svo->insert(grid_position);
     init_debug_mesh(svo->root, 1);
     init_neighbors();
 }
@@ -190,6 +166,57 @@ bool SvoNavmesh::query_voxel(Vector3 world_position) {
 
     return svo->query(grid_position);
 }
+/**
+ * Checkout a voxel from the specified id.
+ *
+ * @param id: The id of the voxel in an SVO. Note that 2 voxel in 2 SVO could have same id.
+ */
+void SvoNavmesh::check_voxel_with_id(String id) {
+    // 检查路径ID是否只有一个字符且为'0'
+    if (id.length() == 1 && id[0] == '0') {
+        UtilityFunctions::print("Checking root node voxel information.");
+        UtilityFunctions::print(svo->root->get_voxel_info());
+        return;
+    }
+    else if (id.length() == 0) {
+        return;
+    }
+    
+    OctreeNode* current_node = svo->root;
+    for (int i = 1; i < id.length(); i++) {
+        char child_index = id[i];
+
+        // 检查字符是否有效
+        if (child_index < '0' || child_index > '7') {
+            UtilityFunctions::print("Invalid ID: ", id);
+            return;
+        }
+
+        // 转换字符为子节点索引
+        int index = child_index - '0';
+
+        // 检查子节点是否存在
+        if (!current_node->children[index]) {
+            UtilityFunctions::print("Node does not exist at path: ", id.substr(0, i + 1));
+            return;
+        }
+
+        // 移动到子节点
+        current_node = current_node->children[index];
+    }
+    // 打印找到的体素信息
+    if (current_node && current_node->voxel) {
+        UtilityFunctions::print("Voxel found at path: ", id);
+        UtilityFunctions::print(current_node->get_voxel_info());
+        reset_debugCheck();
+        current_node->debugMesh.set_material_override(debugCheckMaterial);
+        current_node->debugChecked = true;
+        debugChecked_node = current_node;
+    }
+    else {
+        UtilityFunctions::print("No voxel found at path: ", id);
+    }
+}
 //临时弃用; Temp Abandon
 void SvoNavmesh::update_voxel(Vector3 world_position, bool isSolid) {
     Vector3 grid_position = worldToGrid(world_position);
@@ -204,20 +231,6 @@ void SvoNavmesh::update_voxel(Vector3 world_position, bool isSolid) {
 
     refresh_svo();
     svo->update(grid_position, isSolid);
-}
-
-Vector3 SvoNavmesh::get_offset_position() const {
-    return offset_position;
-}
-void SvoNavmesh::set_offset_position(Vector3 position) {
-    offset_position = position;
-}
-
-Vector3 SvoNavmesh::get_offset_rotation() const {
-    return offset_rotation;
-}
-void SvoNavmesh::set_offset_rotation(Vector3 rotation) {
-    offset_rotation = rotation;
 }
 
 float SvoNavmesh::get_voxel_size() const {
@@ -271,6 +284,12 @@ void SvoNavmesh::set_DR_max_depth(int depth) {
     }
     DrawRef_maxDepth = depth;
 }
+bool SvoNavmesh::get_show_empty() const {
+    return show_empty;
+}
+void SvoNavmesh::set_show_empty(bool show_empty) {
+    this->show_empty = show_empty;
+}
 // </debug draw set/get>
 
 /**
@@ -279,12 +298,15 @@ void SvoNavmesh::set_DR_max_depth(int depth) {
 void SvoNavmesh::rebuild_svo() {
     uint64_t begin = Time::get_singleton()->get_ticks_msec();
 
-    svo->clear();
+    svo->maxDepth = maxDepth;
+    svo->voxelSize = voxelSize;
+
     reset_pool();
-    init_debug_mesh(svo->root, 1);
+    svo->clear();
+    //init_debug_mesh(svo->root, 1);
 
     insert_svo_based_on_collision_shapes();
-    reset_pool();
+    //reset_pool();
     init_debug_mesh(svo->root, 1);
     init_neighbors();
 
@@ -317,16 +339,16 @@ void SvoNavmesh::refresh_svo() {
     init_debug_mesh(svo->root, 1);
     init_neighbors();
 }
+
 /**
  * Clear the svo.
  *
  * @param clear_setting: whether also clear svo setting.
  */
 void SvoNavmesh::clear_svo(bool clear_setting) {
+    reset_pool();
     if (clear_setting) {
         // clear svo and settings
-        offset_position = Vector3(0, 0, 0);
-        offset_rotation = Vector3(0, 0, 0);
         maxDepth = 3;
         voxelSize = 1.0f;
         svo->clear();
@@ -335,11 +357,11 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
         // clear only svo
         svo->clear();
     }
-    reset_pool();
     init_debug_mesh(svo->root, 1);
     init_neighbors();
 }
 
+//已弃用; Abandon
 /**
  Insert after collect.
  */
@@ -359,14 +381,16 @@ void SvoNavmesh::insert_svo_based_on_collision_shapes() {
     if (parent_node != nullptr) {
         collect_collision_shapes(parent_node, space_rid);
     }
+    traverse_svo_space_and_insert(svo->root, 1, space_rid);
 
     uint64_t end = Time::get_singleton()->get_ticks_msec();
     WARN_PRINT_ED(vformat("insert svo nodes with %d milliseconds", end - begin));
 }
+
 /**
  Use Godot's physics engine to check if the point is inside CollisionShape3D.
  */
-bool check_point_inside_mesh(Vector3 point, RID& space_rid, RID& target_rid) {
+bool check_point_inside_mesh(Vector3 point, RID& space_rid) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
     PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
@@ -393,13 +417,98 @@ bool check_point_inside_mesh(Vector3 point, RID& space_rid, RID& target_rid) {
             // Compare collider object RID
             // 对比 collider 对象RID
             RID result_rid = result["rid"];
-            if (result_rid == target_rid) {
+            if (target_rids.has(result_rid)) {
                 return true;
             }
         }
     }
     return false;
 }
+
+/**
+ Use Godot's physics engine to check if the cube intersect CollisionShape3D.
+ */
+bool check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size, RID& space_rid) {
+    // Get the PhysicsDirectSpaceState3D instance
+    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    if (!space_state) {
+        ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
+        return false;
+    }
+
+    // Create a BoxShape3D with the given size
+    Ref<BoxShape3D> box_shape;
+    box_shape.instantiate();
+    box_shape->set_size(Vector3(size, size, size));
+
+    // Create and configure query parameters
+    Ref<PhysicsShapeQueryParameters3D> query_params;
+    query_params.instantiate();
+    query_params->set_shape(box_shape);
+    query_params->set_transform(Transform3D(rotation, position));
+
+    // Execute query
+    Array results = space_state->intersect_shape(query_params);
+
+    // Process the query results
+    if (!results.is_empty()) {
+        for (int i = 0; i < results.size(); ++i) {
+            Dictionary result = results[i];
+            RID result_rid = result["rid"];
+            if (target_rids.has(result_rid)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+bool is_box_fully_inside_mesh(Vector3 position, float size, RID& space_rid) {
+    Vector3 half_size = Vector3(size, size, size) * 0.5;
+
+    // Sample points: 8 vertices + 6 face centers + 12 edge midpoints + 1 center = 27 points
+    Vector3 sample_points[27] = {
+        position + Vector3(-half_size.x, -half_size.y, -half_size.z),
+        position + Vector3(half_size.x, -half_size.y, -half_size.z),
+        position + Vector3(-half_size.x, half_size.y, -half_size.z),
+        position + Vector3(half_size.x, half_size.y, -half_size.z),
+        position + Vector3(-half_size.x, -half_size.y, half_size.z),
+        position + Vector3(half_size.x, -half_size.y, half_size.z),
+        position + Vector3(-half_size.x, half_size.y, half_size.z),
+        position + Vector3(half_size.x, half_size.y, half_size.z),
+
+        position + Vector3(0, 0, 0),
+
+        position + Vector3(-half_size.x, 0, 0),
+        position + Vector3(half_size.x, 0, 0),
+        position + Vector3(0, -half_size.y, 0),
+        position + Vector3(0, half_size.y, 0),
+        position + Vector3(0, 0, -half_size.z),
+        position + Vector3(0, 0, half_size.z),
+
+        position + Vector3(-half_size.x, -half_size.y, 0),
+        position + Vector3(half_size.x, -half_size.y, 0),
+        position + Vector3(-half_size.x, half_size.y, 0),
+        position + Vector3(half_size.x, half_size.y, 0),
+        position + Vector3(-half_size.x, 0, -half_size.z),
+        position + Vector3(half_size.x, 0, -half_size.z),
+        position + Vector3(-half_size.x, 0, half_size.z),
+        position + Vector3(half_size.x, 0, half_size.z),
+        position + Vector3(0, -half_size.y, -half_size.z),
+        position + Vector3(0, half_size.y, -half_size.z),
+        position + Vector3(0, -half_size.y, half_size.z),
+        position + Vector3(0, half_size.y, half_size.z)
+    };
+
+    for (int i = 0; i < 27; i++) {
+        if (!check_point_inside_mesh(sample_points[i], space_rid)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+//已弃用; Abandon
 /**
  Interval Scan svo to get points.
  */
@@ -414,7 +523,7 @@ Vector<Vector3> sample_collision_shape(Ref<ArrayMesh> mesh, Vector3 position, fl
 
                 // Check if the point is inside the grid
                 // 检测点是否在网格内部
-                if (check_point_inside_mesh(point, space_rid, target_rid)) {
+                if (check_point_inside_mesh(point, space_rid)) {
                     sampled_points.push_back(point);
                 }
             }
@@ -430,6 +539,7 @@ Vector<Vector3> sample_collision_shape(Ref<ArrayMesh> mesh, Vector3 position, fl
 
     return sampled_points;
 }
+
 //已弃用; Abandon
 Vector<Vector3> get_box_corners(CollisionShape3D* collision_shape) {
     Vector<Vector3> corners;
@@ -453,6 +563,8 @@ Vector<Vector3> get_box_corners(CollisionShape3D* collision_shape) {
 
     return corners;
 }
+
+//已弃用; Abandon
 /**
  Collect Points from CollisionShape3D.
  */
@@ -467,6 +579,7 @@ Vector<Vector3> get_shape_points(CollisionShape3D* collision_shape, Vector3 posi
 
     return points;
 }
+
 /**
  Collect CollisionShape3D from PhysicsBody3D.
  */
@@ -490,8 +603,8 @@ void SvoNavmesh::collect_collision_shapes(Node* node, RID& space_rid) {
                 if (collision_shape && !collision_shape->is_disabled()) {
                     RID target_rid = physics_body->get_rid();
                     target_rids.push_back(target_rid);
-                    Vector<Vector3> points = get_shape_points(collision_shape, get_global_position(), voxelSize, svo->calActualVoxelSize(svo->maxDepth) / 2, space_rid, target_rid);
-                    build_svo(svo, points);
+                    //Vector<Vector3> points = get_shape_points(collision_shape, get_global_position(), voxelSize, svo->calActualVoxelSize(svo->maxDepth) / 2, space_rid, target_rid);
+                    //build_svo(svo, points);
                 }
             }
         }
@@ -499,6 +612,54 @@ void SvoNavmesh::collect_collision_shapes(Node* node, RID& space_rid) {
         // Recursively collect collision shapes of child nodes
         // 递归地收集子节点的碰撞形状
         collect_collision_shapes(child, space_rid);
+    }
+}
+
+/**
+ Intersect svo nodes with collider recursively
+ */
+void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth, RID& space_rid) {
+    if (depth > maxDepth) {
+        return;
+    }
+
+    // TODO: Start working on this when ready for real Sparse
+    bool temp = false;
+    if (temp && is_box_fully_inside_mesh(gridToWorld(node->center), node->voxel->size, space_rid)) {
+        if (depth == maxDepth) {
+            node->voxel->state = VS_SOLID;
+            node->isLeaf = true;
+        }
+        else {
+            node->voxel->state = VS_LIQUID;
+            if (node->children[0] == nullptr) {
+                svo->create_empty_children(node, depth);
+            }
+
+            for (int i = 0; i < 8; ++i) {
+                traverse_svo_space_and_insert(node->children[i], depth + 1, space_rid);
+            }
+            svo->evaluate_homogeneity(node);
+        }
+        return;
+    }
+
+    if (check_box_intersect_mesh(gridToWorld(node->center), get_global_rotation(), node->voxel->size, space_rid)) {
+        if (depth == maxDepth) {
+            node->voxel->state = VS_SOLID;
+            node->isLeaf = true;
+        }
+        else {
+            node->voxel->state = VS_LIQUID;
+            if (node->children[0] == nullptr) {
+                svo->create_empty_children(node, depth);
+            }
+
+            for (int i = 0; i < 8; ++i) {
+                traverse_svo_space_and_insert(node->children[i], depth + 1, space_rid);
+            }
+            svo->evaluate_homogeneity(node);
+        }
     }
 }
 
@@ -541,12 +702,17 @@ static void init_static_material()
     if (debugSolidMaterial.is_null()) debugSolidMaterial.instantiate();
     debugSolidMaterial->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
     debugSolidMaterial->set_albedo(Color(0.2, 1.0, 0.2, 0.2));  // 半透明绿色
+
+    if (debugCheckMaterial.is_null()) debugCheckMaterial.instantiate();
+    debugCheckMaterial->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+    debugCheckMaterial->set_albedo(Color(0.2, 0.2, 1.0, 0.2));  // 半透明蓝色
+
     if (debugEmptyMaterial.is_null()) debugEmptyMaterial.instantiate();
     if (EmptyMaterial_shader.is_null()) {
         EmptyMaterial_shader.instantiate();
         EmptyMaterial_shader->set_code(R"(
             shader_type spatial;
-            render_mode wireframe,cull_disabled;
+            render_mode wireframe, cull_disabled;
 
             void fragment() {
                 ALBEDO = vec3(1.0, 0.0, 0.0);
@@ -557,6 +723,7 @@ static void init_static_material()
 }
 static void clear_static_material() {
     debugSolidMaterial.unref();
+    debugCheckMaterial.unref();
     debugEmptyMaterial.unref();
     EmptyMaterial_shader.unref();
 }
@@ -572,16 +739,46 @@ void SvoNavmesh::_exit_tree(){
 }
 
 /**
- This method needs to be called manually if changes are involved in the svo structure.
+ This method needs to be called manually before changes are involved in the svo structure.
  牵涉到svo结构变化需要手动调用此方法
  */
+/*void SvoNavmesh::reset_pool_v1() {
+    if (!mesh_pool.is_empty()) {
+        for (MeshInstance3D* instance : mesh_pool) {
+            if (instance && instance->get_parent() == this) {
+                remove_child(instance);
+                // if (!waste_pool.has(instance)) waste_pool.push_back(instance);
+                // instance->queue_free();
+            } else {
+                UtilityFunctions::print("Instance is not a child of this node or is null");
+            }
+        }
+        mesh_pool.clear();
+    }
+    if (!path_pool.is_empty()) {
+        // Clear existing path_pool if necessary
+        for (int i = 0; i < path_pool.size(); ++i) {
+            if (path_pool[i] && path_pool[i]->get_parent() == this) {
+                remove_child(path_pool[i]);
+                memdelete(path_pool[i]);
+            } else {
+                UtilityFunctions::print("Path pool element is not a child of this node or is null");
+            }
+        }
+        path_pool.clear();
+    }
+    target_rids.clear();
+    reset_debugCheck();
+
+    // UtilityFunctions::print(vformat("Waste pool count: %d", waste_pool.size()));
+}*/
 void SvoNavmesh::reset_pool() {
     if (!mesh_pool.is_empty()) {
         for (MeshInstance3D* instance : mesh_pool) {
             if (instance && instance->is_inside_tree()) {
                 remove_child(instance);
                 //if (!waste_pool.has(instance)) waste_pool.push_back(instance);
-                //instance->queue_free();
+                instance->queue_free();
             }
         }
         mesh_pool.clear();
@@ -590,14 +787,31 @@ void SvoNavmesh::reset_pool() {
         // Clear existing path_pool if necessary
         for (int i = 0; i < path_pool.size(); ++i) {
             remove_child(path_pool[i]);
-            memdelete(path_pool[i]);
+            path_pool[i]->queue_free();
+            //memdelete(path_pool[i]);
         }
         path_pool.clear();
     }
+    target_rids.clear();
+    reset_debugCheck();
 
-    //
-    //UtilityFunctions::print(vformat("Waste pool count: %d", waste_pool.size()));
+    // UtilityFunctions::print(vformat("Waste pool count: %d", waste_pool.size()));
 }
+
+void SvoNavmesh::reset_debugCheck() {
+    if (debugChecked_node) {
+        if (debugChecked_node->voxel && debugChecked_node->voxel->isSolid())
+        {
+            debugChecked_node->debugMesh.set_material_override(debugSolidMaterial);
+        }
+        else {
+            debugChecked_node->debugMesh.set_material_override(debugEmptyMaterial);
+        }
+        debugChecked_node->debugChecked = false;
+        debugChecked_node = nullptr;
+    }
+}
+
 //已弃用; Abandon
 void SvoNavmesh::reset_wastepool() {
     if (!waste_pool.is_empty()) {
@@ -607,6 +821,7 @@ void SvoNavmesh::reset_wastepool() {
         waste_pool.clear();
     }
 }
+
 /**
  This method needs to be called manually if changes are involved in the svo structure.
  牵涉到svo结构变化需要手动调用此方法
@@ -717,27 +932,23 @@ void SvoNavmesh::set_neighbors_from_brother(OctreeNode* node) {
 void SvoNavmesh::draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
     if (!node || current_depth > svo->maxDepth) return;
 
-    float size = 2 * voxelSize / pow(2, current_depth);
+    bool is_painting = node->voxel->isSolid() || (show_empty && node->voxel->isEmpty());
 
-    Vector3 euler_angles_radians(
-        Math::deg_to_rad(offset_rotation.x),
-        Math::deg_to_rad(offset_rotation.y),
-        Math::deg_to_rad(offset_rotation.z)
-    );
-    Transform3D local_transform = Transform3D(Quaternion(euler_angles_radians), offset_position);
-    Vector3 global_pos = local_transform.xform(node->center);
-    Transform3D global_transform = local_transform.translated(global_pos);
+    if (is_painting || node->debugChecked) {
+        float size = 2 * voxelSize / pow(2, current_depth);
 
+        if (node->debugChecked || (current_depth >= min_depth && current_depth <= max_depth)) {
+            node->debugMesh.set_transform(Transform3D(Basis(), node->center));
+            node->debugMesh.set_visible(true);
+        }
+        else {
+            node->debugMesh.set_visible(false);
+        }
 
-    if (current_depth >= min_depth && current_depth <= max_depth) {
-        node->debugMesh.set_transform(global_transform);
-        node->debugMesh.set_visible(true);
     }
     else {
         node->debugMesh.set_visible(false);
     }
-
-    // FIXME: 对于EMPTY节点，修复min_depth只在叶子层有效的问题
 
     for (int i = 0; i < 8; i++) {
         if (node->children[i]) {
@@ -752,17 +963,6 @@ void SvoNavmesh::draw_svo_v1(OctreeNode* node, int current_depth, int min_depth,
 
     float size = 2*voxelSize / pow(2, current_depth);   // 计算当前深度的体素尺寸
 
-    // 应用 offset_position 和 offset_rotation
-    Vector3 euler_angles_radians(
-        Math::deg_to_rad(offset_rotation.x),
-        Math::deg_to_rad(offset_rotation.y),
-        Math::deg_to_rad(offset_rotation.z)
-    );
-    Transform3D local_transform = Transform3D(Quaternion(euler_angles_radians), offset_position);
-    Vector3 global_pos = local_transform.xform(node->center);
-    Transform3D global_transform = local_transform.translated(global_pos);
-
-
     // 检查是否在指定深度范围内
     if (current_depth >= min_depth && current_depth <= max_depth) {
         // 创建 MeshInstance3D
@@ -776,7 +976,7 @@ void SvoNavmesh::draw_svo_v1(OctreeNode* node, int current_depth, int min_depth,
         box_mesh->set_size(Vector3(size, size, size));  // 设置盒子大小
 
         mesh_instance->set_mesh(box_mesh);
-        mesh_instance->set_transform(global_transform);  // 设置体素的全局变换，包括位置和旋转
+        mesh_instance->set_transform(Transform3D(Basis(), node->center));  // 设置体素的全局变换，包括位置和旋转
 
         // 设置材料
         if (node->voxel && node->voxel->isSolid())
@@ -905,6 +1105,7 @@ void add_liquid_children(Vector<OctreeNode*>& neighbors, OctreeNode* node, float
         }
     }
 }
+
 /**
  get navigable neighbors, considering SVO layers
  */
@@ -933,7 +1134,7 @@ Vector<OctreeNode*> get_neighbors(OctreeNode* node, float agent_r) {
 /**
  check if a direct path (with radius) between two points is feasible
  */
-bool SvoNavmesh::can_traverse_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid) {
+bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
     PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
@@ -1023,10 +1224,11 @@ bool SvoNavmesh::can_traverse_directly_with_cylinder(const Vector3& from, const 
     }
     return true;
 }
+
 /**
  check if a direct path (no radius) between two points is feasible
  */
-bool SvoNavmesh::can_traverse_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid) {
+bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
     PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
@@ -1055,6 +1257,7 @@ bool SvoNavmesh::can_traverse_directly_with_ray(const Vector3& from, const Vecto
     }
     return true;
 }
+
 /**
  fast smooth_path (though not lot faster)
  */
@@ -1072,10 +1275,10 @@ Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_fast(const Vector<Vector3
         while (j < path.size()) {
             bool can_traverse;
             if (agent_radius > 0.0f) {
-                can_traverse = can_traverse_directly_with_cylinder(path[i], path[j], agent_radius, space_rid);
+                can_traverse = can_travel_directly_with_cylinder(path[i], path[j], agent_radius, space_rid);
             }
             else {
-                can_traverse = can_traverse_directly_with_ray(path[i], path[j], space_rid);
+                can_traverse = can_travel_directly_with_ray(path[i], path[j], space_rid);
             }
 
             if (!can_traverse) {
@@ -1095,6 +1298,7 @@ Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_fast(const Vector<Vector3
 
     return smooth_path;
 }
+
 /**
  perfect smooth_path
  */
@@ -1112,10 +1316,10 @@ Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_best(const Vector<Vector3
         for (int j = i + 1; j < path.size(); ++j) {
             bool can_traverse;
             if (agent_radius > 0.0f) {
-                can_traverse = can_traverse_directly_with_cylinder(path[i], path[j], agent_radius, space_rid);
+                can_traverse = can_travel_directly_with_cylinder(path[i], path[j], agent_radius, space_rid);
             }
             else {
-                can_traverse = can_traverse_directly_with_ray(path[i], path[j], space_rid);
+                can_traverse = can_travel_directly_with_ray(path[i], path[j], space_rid);
             }
 
             if (can_traverse) {
@@ -1219,12 +1423,12 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path, float agent_r) {
     for (int i = 0; i < path.size(); ++i) {
         MeshInstance3D* sphere = memnew(MeshInstance3D);
 
-        Vector3 world_point = gridToWorld(path[i]);
+        //Vector3 world_point = gridToWorld(path[i]);
         //UtilityFunctions::print(vformat("world_point %d: %v", i, world_point));
 
         sphere->set_mesh(sphereMesh);
         sphere->set_material_override(material2);
-        sphere->set_transform(Transform3D(Basis(), world_point));
+        sphere->set_transform(Transform3D(Basis(), path[i]));
 
         add_child(sphere);
         path_pool.push_back(sphere);
@@ -1239,9 +1443,9 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path, float agent_r) {
 
             // Place a cylinder between two waypoints
             // 在两个路径点之间放置一个圆柱体
-            Vector3 next_world_point = gridToWorld(debug_path[i + 1]);
-            Vector3 direction = (next_world_point - world_point).normalized();
-            float distance = world_point.distance_to(next_world_point);
+            //Vector3 next_world_point = gridToWorld(path[i + 1]);
+            Vector3 direction = (path[i + 1] - path[i]).normalized();
+            float distance = path[i + 1].distance_to(path[i]);
             // 默认的向上方向
             Vector3 up(0, 1, 0);
             // 计算旋转轴
@@ -1256,7 +1460,7 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path, float agent_r) {
                 Quaternion rotation(rotation_axis, angle);
                 transform.basis = Basis(rotation);
             }
-            transform.origin = (world_point + next_world_point) * 0.5;
+            transform.origin = (path[i] + path[i + 1]) * 0.5;
             transform.basis.scale_local(Vector3(1, distance, 1)); // 圆柱体的缩放
 
             cylinder->set_transform(transform);
@@ -1279,10 +1483,12 @@ Vector<Vector3> SvoNavmesh::find_path(const Vector3 start, const Vector3 end, fl
     Dictionary g_score;
     Dictionary f_score;
 
-    OctreeNode* start_node = svo->get_deepest_node(worldToGrid(start)); // Convert world coordinates to SVO grid coordinates
-    OctreeNode* end_node = svo->get_deepest_node(worldToGrid(end));
+    Vector3 start_grid = worldToGrid(start);
+    Vector3 end_grid = worldToGrid(end);
+    OctreeNode* start_node = svo->get_deepest_node(start_grid); // Convert world coordinates to SVO grid coordinates
+    OctreeNode* end_node = svo->get_deepest_node(end_grid);
 
-    came_from[start_node->center] = start;  // manual add start
+    came_from[start_node->center] = start_grid;  // manual add start
     open_set.push_back(start_node);
     g_score[start_node->debugMesh.get_instance_id()] = 0;
     f_score[start_node->debugMesh.get_instance_id()] = heuristic(start_node, end_node);
@@ -1290,8 +1496,8 @@ Vector<Vector3> SvoNavmesh::find_path(const Vector3 start, const Vector3 end, fl
     while (!open_set.is_empty()) {
         OctreeNode* current = get_lowest_f_score_node(open_set, f_score);
         if (current == end_node) {
-            came_from[end] = end_node->center;  // manual add end
-            return reconstruct_path(came_from, end);
+            came_from[end_grid] = end_node->center;  // manual add end
+            return reconstruct_path(came_from, end_grid);
         }
 
         open_set.erase(current);

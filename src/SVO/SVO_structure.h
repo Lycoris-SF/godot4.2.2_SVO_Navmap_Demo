@@ -1,6 +1,8 @@
 #ifndef SVO_STRUCTURE_H
 #define SVO_STRUCTURE_H
 
+#include <godot_cpp/godot.hpp>
+#include <godot_cpp/classes/node.hpp>
 #include <godot_cpp/templates/vector.hpp>
 
 #include <godot_cpp/variant/vector3.hpp>
@@ -24,9 +26,14 @@ namespace godot {
         bool isSolid();
         bool isEmpty();
         bool isLiquid();
+        String to_string() const;
+    private:
+        String state_to_string(VoxelState state) const;
     };
 
-    class OctreeNode {
+    class OctreeNode : public Node {
+        GDCLASS(OctreeNode, Node);
+
     public:
         bool isLeaf;
         int currentDepth;
@@ -40,9 +47,20 @@ namespace godot {
         // debug draw
         MeshInstance3D debugMesh;
         Ref<BoxMesh> debugBoxMesh;
+        bool debugChecked;
 
+        // debug print
+        String get_voxel_info() const;
+
+        OctreeNode();
         OctreeNode(OctreeNode* father_node, int depth = -1, int index = -1);
         ~OctreeNode();
+
+    private:
+        void queue_free_debug_mesh();
+
+    protected:
+        static void _bind_methods();
     };
 
     class SparseVoxelOctree {
@@ -66,6 +84,9 @@ namespace godot {
 
         // other tool
         float calActualVoxelSize(int depth);
+        void create_empty_children(OctreeNode* node, int depth);
+        void create_solid_children(OctreeNode* node, int depth);
+        void evaluate_homogeneity(OctreeNode* node);
 
     private:
         void insert(OctreeNode* node, Vector3 pos, Vector3 center, int depth);
@@ -81,8 +102,6 @@ namespace godot {
         void deleteChildren(OctreeNode* node);
         // other tool
         void merge_children(OctreeNode* node);
-        void create_empty_children(OctreeNode* node, int depth);
-        void create_solid_children(OctreeNode* node, int depth);
     };
 
 }

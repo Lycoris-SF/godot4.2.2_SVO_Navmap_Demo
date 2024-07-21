@@ -17,9 +17,36 @@ bool Voxel::isLiquid()
 {
     return state == VS_LIQUID;
 }
+String Voxel::to_string() const {
+    return vformat("Voxel(State: %s, Size: %f)", state_to_string(state), size);
+}
+String Voxel::state_to_string(VoxelState state) const {
+    switch (state) {
+    case VS_EMPTY: return "EMPTY";
+    case VS_SOLID: return "SOLID";
+    case VS_LIQUID: return "LIQUID";
+    default: return "ERROR_UNKNOWN";
+    }
+}
 
-OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) : 
-    currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr)
+void OctreeNode::_bind_methods()
+{
+
+}
+OctreeNode::OctreeNode():
+    currentDepth(1), currentIndex(0), isLeaf(true), voxel(nullptr), debugChecked(false)
+{
+    father = nullptr;
+    for (int i = 0; i < 8; ++i) {
+        children[i] = nullptr;
+    }
+    for (int i = 0; i < 6; ++i) {
+        neighbors[i] = nullptr;
+    }
+    center = Vector3(0, 0, 0);
+}
+OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) :
+    currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr), debugChecked(false)
 {
     father = father_node;
     for (int i = 0; i < 8; ++i) {
@@ -35,11 +62,34 @@ OctreeNode::~OctreeNode() {
     if (!debugBoxMesh.is_null()) { 
         debugBoxMesh.unref(); 
     }
-    debugMesh.queue_free();
+
+    call_deferred("queue_free_debug_mesh");
+
     for (int i = 0; i < 8; ++i) {
-        if (children[i]) memdelete(children[i]);  
-        children[i] = nullptr;
+        if (children[i] != nullptr) {
+            //UtilityFunctions::print(vformat("Deleting child: %s", get_voxel_info()));
+            memdelete(children[i]);
+            children[i] = nullptr;
+        }
+        else {
+            //UtilityFunctions::print(vformat("Child index %d is already null", i));
+        }
     }
+}
+void OctreeNode::queue_free_debug_mesh() {
+    if (debugMesh.is_inside_tree()) {
+        debugMesh.queue_free();
+    }
+}
+
+String OctreeNode::get_voxel_info() const{
+    String voxel_info = (voxel != nullptr) ? voxel->to_string() : "Voxel: null";
+    return vformat("OctreeNode(Leaf: %s, Depth: %d, Index: %d, Center: %s, %s)",
+        isLeaf ? "true" : "false",
+        currentDepth,
+        currentIndex,
+        center,
+        voxel_info);
 }
 
 SparseVoxelOctree::SparseVoxelOctree() {
@@ -62,7 +112,6 @@ SparseVoxelOctree::~SparseVoxelOctree() {
 float SparseVoxelOctree::calActualVoxelSize(int depth) {
     return voxelSize / (1 << depth);
 }
-
 
 void updateCenterCoordinates(Vector3& center, int index, float halfSize) {
     if (index & 1) center.x += halfSize / 2;  // X·½Ïò
@@ -146,7 +195,7 @@ void SparseVoxelOctree::reevaluate_homogeneity_insert(OctreeNode* node) {
         }
     }
     else {
-        memdelete(node->voxel);
+        // its not possible to have full empty right after insert
     }
 }
 
@@ -394,6 +443,42 @@ void SparseVoxelOctree::create_solid_children(OctreeNode* node, int depth) {
         float halfSize = voxelSize / pow(2, depth);
         Vector3 childCenter = node->center + octant_offset(i, halfSize);
         node->children[i]->center = childCenter;
+    }
+}
+void SparseVoxelOctree::evaluate_homogeneity(OctreeNode* node) {
+    if (node->isLeaf) return;
+
+    bool allSolid = true;
+    bool anySolid = false;
+    for (int i = 0; i < 8; i++) {
+        if (node->children[i]) {
+            allSolid &= (node->children[i]->voxel->state == VS_SOLID);
+            anySolid |= (node->children[i]->voxel->state != VS_EMPTY);
+        }
+        else {
+            allSolid = false;
+        }
+    }
+
+    if (allSolid) {
+        if (!node->voxel) node->voxel = memnew(Voxel(VS_SOLID, calActualVoxelSize(node->currentDepth)));
+        else {
+            node->voxel->state = VS_SOLID;
+        }
+    }
+    else if (anySolid) {
+        if (!node->voxel) node->voxel = memnew(Voxel(VS_LIQUID, calActualVoxelSize(node->currentDepth)));
+        else {
+            node->voxel->state = VS_LIQUID;
+        }
+    }
+    else {
+        if (!node->voxel) node->voxel = memnew(Voxel(VS_EMPTY, calActualVoxelSize(node->currentDepth)));
+        else {
+            node->voxel->state = VS_EMPTY;
+        }
+        node->isLeaf = true;
+        deleteChildren(node);
     }
 }
 

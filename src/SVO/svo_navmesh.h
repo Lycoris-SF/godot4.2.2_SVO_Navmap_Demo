@@ -32,6 +32,7 @@
 
 namespace godot {
     static Ref<StandardMaterial3D> debugSolidMaterial;
+    static Ref<StandardMaterial3D> debugCheckMaterial;
     static Ref<ShaderMaterial> debugEmptyMaterial;
     static Ref<Shader> EmptyMaterial_shader;
     // PhysicsBody3Ds' RID
@@ -44,8 +45,6 @@ namespace godot {
 
     private:
         SparseVoxelOctree *svo;
-        Vector3 offset_position; // Offset position in voxel space
-        Vector3 offset_rotation; // Offset rotation in voxel space
         int maxDepth;
         float voxelSize;    // size of the root cube
         double testdouble;
@@ -53,10 +52,14 @@ namespace godot {
         // <debug draw>
         int DrawRef_minDepth;
         int DrawRef_maxDepth;
+        bool show_empty;
         int get_DR_min_depth() const;
         void set_DR_min_depth(int depth);
         int get_DR_max_depth() const;
         void set_DR_max_depth(int depth);
+        bool get_show_empty() const;
+        void set_show_empty(bool show_empty);
+        OctreeNode* debugChecked_node;
         Vector<MeshInstance3D*> mesh_pool;  // MeshInstance3D children in SvoNavmesh: Node3D
         Vector<MeshInstance3D*> waste_pool;  // MeshInstance3D children to recycle
         Vector<Vector3> debug_path;
@@ -66,6 +69,7 @@ namespace godot {
         void init_debug_mesh(OctreeNode* node, int depth);
         void init_debug_path(const Vector<Vector3>& path, float agent_r);
         void reset_pool();
+        void reset_debugCheck();
         void reset_wastepool();
         void draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth);
         void draw_svo_v1(OctreeNode* node, int current_depth, int min_depth, int max_depth);
@@ -84,8 +88,9 @@ namespace godot {
         Vector3 worldToGrid(Vector3 world_position);
         Vector3 gridToWorld(Vector3 grid_position);
         void collect_collision_shapes(Node* node, RID &space_rid);
-        bool can_traverse_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid);
-        bool can_traverse_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid);
+        void traverse_svo_space_and_insert(OctreeNode* node, int depth, RID& space_rid);
+        bool can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid);
+        bool can_travel_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid);
         Vector<Vector3> smooth_path_string_pulling_fast(const Vector<Vector3>& path, float agent_radius, RID& space_rid);
         Vector<Vector3> smooth_path_string_pulling_best(const Vector<Vector3>& path, float agent_radius, RID& space_rid);
 
@@ -99,13 +104,10 @@ namespace godot {
 
         void insert_voxel(Vector3 position);
         bool query_voxel(Vector3 position);
+        void check_voxel_with_id(String id);
         void update_voxel(Vector3 position, bool isSolid);
 
         //svo setting
-        Vector3 get_offset_position() const;
-        void set_offset_position(Vector3 position);
-        Vector3 get_offset_rotation() const;
-        void set_offset_rotation(Vector3 rotation);
         float get_voxel_size() const;
         void set_voxel_size(float size);
         int get_max_depth() const;
