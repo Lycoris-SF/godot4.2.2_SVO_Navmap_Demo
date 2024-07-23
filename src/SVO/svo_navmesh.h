@@ -50,9 +50,12 @@ namespace godot {
         double testdouble;
 
         // <debug draw>
+        bool debug_mode;
         int DrawRef_minDepth;
         int DrawRef_maxDepth;
         bool show_empty;
+        bool get_debug_mode() const;
+        void set_debug_mode(bool debug_mode);
         int get_DR_min_depth() const;
         void set_DR_min_depth(int depth);
         int get_DR_max_depth() const;
@@ -61,7 +64,7 @@ namespace godot {
         void set_show_empty(bool show_empty);
         OctreeNode* debugChecked_node;
         Vector<MeshInstance3D*> mesh_pool;  // MeshInstance3D children in SvoNavmesh: Node3D
-        Vector<MeshInstance3D*> waste_pool;  // MeshInstance3D children to recycle
+        Vector<Ref<BoxMesh>> waste_pool;  // BoxMesh to recycle
         Vector<Vector3> debug_path;
         Vector<MeshInstance3D*> path_pool;
         //Vector<MeshInstance3D*> active_meshes;  // active MeshInstance list
@@ -69,13 +72,9 @@ namespace godot {
         void init_debug_mesh(OctreeNode* node, int depth);
         void init_debug_path(const Vector<Vector3>& path, float agent_r);
         void reset_pool();
+        void force_clear_debug_mesh();
         void reset_debugCheck();
-        void reset_wastepool();
         void draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth);
-        void draw_svo_v1(OctreeNode* node, int current_depth, int min_depth, int max_depth);
-        //MeshInstance3D* get_mesh_instance_from_pool();
-        //void recycle_mesh_instance(MeshInstance3D* instance);
-        //void clear_mesh_instances();
         // </debug draw>
 
         // <neighbors>
@@ -83,6 +82,9 @@ namespace godot {
         void set_neighbors(OctreeNode* node);
         void set_neighbors_from_brother(OctreeNode* node);
         // </neighbors>
+
+        // path finding
+        Vector<Vector3> find_raw_path(const Vector3 start, const Vector3 end, float agent_r);
 
         // tools
         Vector3 worldToGrid(Vector3 world_position);
@@ -125,10 +127,10 @@ namespace godot {
         float get_info();
 
         // path finding
-        void find_path_and_draw(const Vector3 start, const Vector3 end, float agent_r);
-        Vector<Vector3> find_path(const Vector3 start, const Vector3 end, float agent_r);
+        Array find_path(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth = true);
 
         // override
+        void _ready();
         void _process(double delta);
         void _physics_process(double delta);
         void _enter_tree();

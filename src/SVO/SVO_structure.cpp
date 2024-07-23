@@ -46,7 +46,8 @@ OctreeNode::OctreeNode():
     center = Vector3(0, 0, 0);
 }
 OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) :
-    currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr), debugChecked(false)
+    currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr), 
+    debugChecked(false), debugMesh(nullptr)
 {
     father = father_node;
     for (int i = 0; i < 8; ++i) {
@@ -77,8 +78,8 @@ OctreeNode::~OctreeNode() {
     }
 }
 void OctreeNode::queue_free_debug_mesh() {
-    if (debugMesh.is_inside_tree()) {
-        debugMesh.queue_free();
+    if (debugMesh->is_inside_tree()) {
+        debugMesh->queue_free();
     }
 }
 
@@ -106,7 +107,7 @@ SparseVoxelOctree::SparseVoxelOctree(int max_depth, float voxel_size)
     create_empty_children(root, 1);
 }
 SparseVoxelOctree::~SparseVoxelOctree() {
-    memdelete(root);
+    if(root) memdelete(root);
 }
 
 float SparseVoxelOctree::calActualVoxelSize(int depth) {
@@ -369,7 +370,7 @@ void SparseVoxelOctree::expand_node(OctreeNode* node, int depth)
 {
     if (!node) return;
 
-    if (depth < maxDepth && node->voxel->isSolid()) {
+    if (depth < maxDepth && node->voxel->isSolid() && node->isLeaf) {
         create_solid_children(node, depth);
     }
     for (int i = 0; i < 8; ++i) {
@@ -418,7 +419,7 @@ void SparseVoxelOctree::create_empty_children(OctreeNode* node, int depth) {
             node->children[i]->voxel->state = VS_EMPTY;
             node->children[i]->voxel->size = calActualVoxelSize(depth);
         }
-        if (depth + 1 != maxDepth) node->children[i]->isLeaf = false;
+        //if (depth + 1 != maxDepth) node->children[i]->isLeaf = false;
 
         // Calculate the center of the child node
         // 计算子节点的中心

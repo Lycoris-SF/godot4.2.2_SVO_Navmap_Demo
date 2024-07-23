@@ -50,17 +50,40 @@ theme_override_colors/font_focus_color = Color(0.784314, 0, 0, 1)
 text = "Clear SVO
 "
 
-[node name="HBoxContainer Insert" type="HBoxContainer" parent="."]
+[node name="VBoxContainer_Insert" type="VBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="HBoxContainer_Button" type="HBoxContainer" parent="VBoxContainer_Insert"]
+layout_mode = 2
+
+[node name="PopupMenu" type="PopupMenu" parent="VBoxContainer_Insert/HBoxContainer_Button"]
+item_count = 2
+item_0/text = "Copy"
+item_0/id = 0
+item_1/text = "Paste"
+item_1/id = 1
+
+[node name="Label P" type="Label" parent="VBoxContainer_Insert/HBoxContainer_Button"]
+layout_mode = 2
+text = "Position: "
+
+[node name="Insert Button" type="Button" parent="VBoxContainer_Insert/HBoxContainer_Button"]
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+size_flags_horizontal = 10
+text = "Insert"
+
+[node name="HBoxContainer_Value" type="HBoxContainer" parent="VBoxContainer_Insert"]
 custom_minimum_size = Vector2(0, 35)
 layout_mode = 2
 
-[node name="LabelX" type="Label" parent="HBoxContainer Insert"]
+[node name="LabelX" type="Label" parent="VBoxContainer_Insert/HBoxContainer_Value"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.717199, 2.05759e-06, 3.85046e-07, 1)
 text = "X"
 vertical_alignment = 1
 
-[node name="SpinBoxX" type="SpinBox" parent="HBoxContainer Insert"]
+[node name="SpinBoxX" type="SpinBox" parent="VBoxContainer_Insert/HBoxContainer_Value"]
 layout_mode = 2
 step = 0.0
 allow_greater = true
@@ -68,13 +91,13 @@ allow_lesser = true
 suffix = "px"
 custom_arrow_step = 1.0
 
-[node name="LabelY" type="Label" parent="HBoxContainer Insert"]
+[node name="LabelY" type="Label" parent="VBoxContainer_Insert/HBoxContainer_Value"]
 layout_mode = 2
 theme_override_colors/font_color = Color(3.56168e-06, 0, 0.881772, 1)
 text = "Y"
 vertical_alignment = 1
 
-[node name="SpinBoxY" type="SpinBox" parent="HBoxContainer Insert"]
+[node name="SpinBoxY" type="SpinBox" parent="VBoxContainer_Insert/HBoxContainer_Value"]
 layout_mode = 2
 step = 0.0
 allow_greater = true
@@ -82,24 +105,19 @@ allow_lesser = true
 suffix = "px"
 custom_arrow_step = 1.0
 
-[node name="LabelZ" type="Label" parent="HBoxContainer Insert"]
+[node name="LabelZ" type="Label" parent="VBoxContainer_Insert/HBoxContainer_Value"]
 layout_mode = 2
 theme_override_colors/font_color = Color(2.32231e-06, 0.500788, 9.62615e-08, 1)
 text = "Z"
 vertical_alignment = 1
 
-[node name="SpinBoxZ" type="SpinBox" parent="HBoxContainer Insert"]
+[node name="SpinBoxZ" type="SpinBox" parent="VBoxContainer_Insert/HBoxContainer_Value"]
 layout_mode = 2
 step = 0.0
 allow_greater = true
 allow_lesser = true
 suffix = "px"
 custom_arrow_step = 1.0
-
-[node name="Insert Button" type="Button" parent="HBoxContainer Insert"]
-custom_minimum_size = Vector2(10, 0)
-layout_mode = 2
-text = "Insert"
 
 [node name="HBoxContainer Update" type="HBoxContainer" parent="."]
 custom_minimum_size = Vector2(0, 35)
@@ -285,3 +303,12 @@ custom_arrow_step = 1.0
 custom_minimum_size = Vector2(10, 0)
 layout_mode = 2
 text = "Path"
+
+[node name="Label Smooth" type="Label" parent="HBoxContainer Path End"]
+layout_mode = 2
+text = "SP"
+vertical_alignment = 1
+
+[node name="CheckBox" type="CheckBox" parent="HBoxContainer Path End"]
+layout_mode = 2
+button_pressed = true

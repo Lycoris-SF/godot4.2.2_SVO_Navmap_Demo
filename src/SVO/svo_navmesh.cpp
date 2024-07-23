@@ -18,6 +18,9 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmesh::get_info);
     ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmesh::set_info);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "testdouble"), "set_info", "get_info");
+    ClassDB::bind_method(D_METHOD("get_debug_mode"), &SvoNavmesh::get_debug_mode);
+    ClassDB::bind_method(D_METHOD("set_debug_mode", "debug_mode"), &SvoNavmesh::set_debug_mode);
+    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "debug_mode"), "set_debug_mode", "get_debug_mode");
 
     ClassDB::bind_method(D_METHOD("get_voxel_size"), &SvoNavmesh::get_voxel_size);
     ClassDB::bind_method(D_METHOD("set_voxel_size", "size"), &SvoNavmesh::set_voxel_size);
@@ -47,7 +50,7 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("insert_svo_based_on_collision_shapes"), &SvoNavmesh::insert_svo_based_on_collision_shapes);
 
     // path finding
-    ClassDB::bind_method(D_METHOD("find_path_and_draw", "start", "end", "agent_r"), &SvoNavmesh::find_path_and_draw);
+    ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path);
 }
 
 SvoNavmesh::SvoNavmesh(){
@@ -55,19 +58,18 @@ SvoNavmesh::SvoNavmesh(){
     voxelSize = 1.0f;
     testdouble = 1.14;
 
+    debug_mode = false;
     DrawRef_minDepth = 1;
     DrawRef_maxDepth = 3;
     show_empty = true;
     debugChecked_node = nullptr;
 
     svo = memnew(SparseVoxelOctree);
-    init_neighbors();
-    //init_debug_mesh(svo->root, 1);
 }
 
 SvoNavmesh::~SvoNavmesh() {
     //call_deferred("reset_pool");
-    memdelete(svo);
+    if(svo) memdelete(svo);
     //reset_wastepool();
 }
 
@@ -209,7 +211,7 @@ void SvoNavmesh::check_voxel_with_id(String id) {
         UtilityFunctions::print("Voxel found at path: ", id);
         UtilityFunctions::print(current_node->get_voxel_info());
         reset_debugCheck();
-        current_node->debugMesh.set_material_override(debugCheckMaterial);
+        current_node->debugMesh->set_material_override(debugCheckMaterial);
         current_node->debugChecked = true;
         debugChecked_node = current_node;
     }
@@ -256,6 +258,20 @@ void SvoNavmesh::set_max_depth(int depth) {
 }
 
 // <debug draw set/get>
+bool SvoNavmesh::get_debug_mode() const {
+    return debug_mode;
+}
+void SvoNavmesh::set_debug_mode(bool debug_mode) {
+    this->debug_mode = debug_mode;
+    // TODO: when ready for demo game,
+    //       this needs to be removed,
+    //       debug_mode should only control rendering in game.
+    if (debug_mode) {
+        reset_pool();
+        init_debug_mesh(svo->root, 1);
+    }
+    else force_clear_debug_mesh();
+}
 int SvoNavmesh::get_DR_min_depth() const {
     return DrawRef_minDepth;
 }
@@ -301,14 +317,21 @@ void SvoNavmesh::rebuild_svo() {
     svo->maxDepth = maxDepth;
     svo->voxelSize = voxelSize;
 
-    reset_pool();
-    svo->clear();
-    //init_debug_mesh(svo->root, 1);
+    if (debug_mode) {
+        reset_pool();
+        svo->clear();
+        //init_debug_mesh(svo->root, 1);
 
-    insert_svo_based_on_collision_shapes();
-    //reset_pool();
-    init_debug_mesh(svo->root, 1);
-    init_neighbors();
+        insert_svo_based_on_collision_shapes();
+        //reset_pool();
+        init_debug_mesh(svo->root, 1);
+        init_neighbors();
+    }
+    else {
+        svo->clear();
+        insert_svo_based_on_collision_shapes();
+        init_neighbors();
+    }
 
     uint64_t end = Time::get_singleton()->get_ticks_msec();
     WARN_PRINT_ED(vformat("build svo with %d milliseconds", end - begin));
@@ -318,6 +341,13 @@ void SvoNavmesh::rebuild_svo() {
  Refresh the svo base on svo setting changes.
  */
 void SvoNavmesh::refresh_svo() {
+    // FIXME: expand_node() and compress_node() are doing
+    // dynamic changes to svo nodes, which needs to call init_debug_mesh
+    // to have proper rendering. And right now it's gonna face 
+    // memory access voilation. Abandon this temp since 
+    // rebuild_svo is the only needed right now.
+
+    //if (debug_mode) reset_pool();
     if (svo->maxDepth != maxDepth) {
         if (maxDepth < svo->maxDepth) {
             // compress
@@ -335,8 +365,7 @@ void SvoNavmesh::refresh_svo() {
         // refresh center
         svo->update_node_centers();
     }
-    reset_pool();
-    init_debug_mesh(svo->root, 1);
+    //if (debug_mode) init_debug_mesh(svo->root, 1);
     init_neighbors();
 }
 
@@ -346,7 +375,7 @@ void SvoNavmesh::refresh_svo() {
  * @param clear_setting: whether also clear svo setting.
  */
 void SvoNavmesh::clear_svo(bool clear_setting) {
-    reset_pool();
+    if (debug_mode) reset_pool();
     if (clear_setting) {
         // clear svo and settings
         maxDepth = 3;
@@ -357,7 +386,7 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
         // clear only svo
         svo->clear();
     }
-    init_debug_mesh(svo->root, 1);
+    if (debug_mode) init_debug_mesh(svo->root, 1);
     init_neighbors();
 }
 
@@ -675,26 +704,20 @@ float SvoNavmesh::get_info() {
 }
 
 // override
-void SvoNavmesh::_process(double delta) {
-    // 开销较小，但存在godot子节点导致的体积错误
-    //clear_mesh_instances();
-    //draw_svo(svo->root, 1, 1, maxDepth);
-
-    // 开销较大，但不会牵涉到godot子节点体积问题
-    /*for (MeshInstance3D* instance : mesh_pool) {
-        remove_child(instance);
-        memdelete(instance); // 确保释放内存
+void SvoNavmesh::_ready() {
+    if (debug_mode)
+    {
+        reset_pool();
+        init_debug_mesh(svo->root, 1);
     }
-    mesh_pool.clear();*/
-    // 以上仅用于draw_svo_v1(废弃)
-    // The above is only for draw_svo_v1(abandon)
-
-    draw_svo_v2(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
-    //draw_debug_path();
+    init_neighbors();
+}
+void SvoNavmesh::_process(double delta) {
+    if (debug_mode) draw_svo_v2(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
 }
 void SvoNavmesh::_physics_process(double delta)
 {
-    //reset_wastepool();
+
 }
 static void init_static_material()
 {
@@ -730,17 +753,15 @@ static void clear_static_material() {
 void SvoNavmesh::_enter_tree()
 {
     init_static_material();
-
-    //Node3D::_enter_tree();
 }
 void SvoNavmesh::_exit_tree(){
     clear_static_material();
-    //Node3D::_exit_tree();
 }
 
 /**
  This method needs to be called manually before changes are involved in the svo structure.
  牵涉到svo结构变化需要手动调用此方法
+ Debug rendering only
  */
 /*void SvoNavmesh::reset_pool_v1() {
     if (!mesh_pool.is_empty()) {
@@ -777,7 +798,6 @@ void SvoNavmesh::reset_pool() {
         for (MeshInstance3D* instance : mesh_pool) {
             if (instance && instance->is_inside_tree()) {
                 remove_child(instance);
-                //if (!waste_pool.has(instance)) waste_pool.push_back(instance);
                 instance->queue_free();
             }
         }
@@ -785,46 +805,56 @@ void SvoNavmesh::reset_pool() {
     }
     if (!path_pool.is_empty()) {
         // Clear existing path_pool if necessary
-        for (int i = 0; i < path_pool.size(); ++i) {
-            remove_child(path_pool[i]);
-            path_pool[i]->queue_free();
-            //memdelete(path_pool[i]);
+        for (MeshInstance3D* instance : path_pool) {
+            remove_child(instance);
+            instance->queue_free();
         }
         path_pool.clear();
     }
     target_rids.clear();
     reset_debugCheck();
+}
 
-    // UtilityFunctions::print(vformat("Waste pool count: %d", waste_pool.size()));
+void SvoNavmesh::force_clear_debug_mesh() {
+    if (!mesh_pool.is_empty()) {
+        for (MeshInstance3D* instance : mesh_pool) {
+            if (instance) {
+                remove_child(instance);
+                instance->queue_free();
+            }
+        }
+        mesh_pool.clear();
+    }
+    if (!path_pool.is_empty()) {
+        // Clear existing path_pool if necessary
+        for (MeshInstance3D* instance : path_pool) {
+            remove_child(instance);
+            instance->queue_free();
+        }
+        path_pool.clear();
+    }
+    target_rids.clear();
+    reset_debugCheck();
 }
 
 void SvoNavmesh::reset_debugCheck() {
     if (debugChecked_node) {
         if (debugChecked_node->voxel && debugChecked_node->voxel->isSolid())
         {
-            debugChecked_node->debugMesh.set_material_override(debugSolidMaterial);
+            debugChecked_node->debugMesh->set_material_override(debugSolidMaterial);
         }
         else {
-            debugChecked_node->debugMesh.set_material_override(debugEmptyMaterial);
+            debugChecked_node->debugMesh->set_material_override(debugEmptyMaterial);
         }
         debugChecked_node->debugChecked = false;
         debugChecked_node = nullptr;
     }
 }
 
-//已弃用; Abandon
-void SvoNavmesh::reset_wastepool() {
-    if (!waste_pool.is_empty()) {
-        for (MeshInstance3D* instance : waste_pool) {
-            instance->queue_free();
-        }
-        waste_pool.clear();
-    }
-}
-
 /**
  This method needs to be called manually if changes are involved in the svo structure.
  牵涉到svo结构变化需要手动调用此方法
+ Debug rendering only
  */
 void SvoNavmesh::init_debug_mesh(OctreeNode* node, int depth)
 {
@@ -833,26 +863,28 @@ void SvoNavmesh::init_debug_mesh(OctreeNode* node, int depth)
     float size = 2 * voxelSize / pow(2, depth);
 
     if (depth <= svo->maxDepth) {
-        /*if (!node->debugMesh) {
+        if (!node->debugMesh) {
             node->debugMesh = memnew(MeshInstance3D);
-            mesh_count_log.test_countA++;
-        }*/
-        if (node->debugBoxMesh.is_null()) node->debugBoxMesh = Ref<BoxMesh>(memnew(BoxMesh));
+            //mesh_count_log.test_countA++;
+        }
+        if (node->debugBoxMesh.is_null()) {
+            node->debugBoxMesh = Ref<BoxMesh>(memnew(BoxMesh));
+        }
         node->debugBoxMesh->set_size(Vector3(size, size, size));
-        node->debugMesh.set_mesh(node->debugBoxMesh);
+        node->debugMesh->set_mesh(node->debugBoxMesh);
 
         // Set up materials
         // 设置材料
         if (node->voxel && node->voxel->isSolid())
         {
-            node->debugMesh.set_material_override(debugSolidMaterial);
+            node->debugMesh->set_material_override(debugSolidMaterial);
         }
         else {
-            node->debugMesh.set_material_override(debugEmptyMaterial);
+            node->debugMesh->set_material_override(debugEmptyMaterial);
         }
 
-        add_child(&node->debugMesh);
-        mesh_pool.push_back(&node->debugMesh);
+        add_child(node->debugMesh);
+        mesh_pool.push_back(node->debugMesh);
     }
 
     // Recursively traverse child nodes
@@ -930,6 +962,10 @@ void SvoNavmesh::set_neighbors_from_brother(OctreeNode* node) {
  Draw the svo for debuging.
  */
 void SvoNavmesh::draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
+    if (!node->debugMesh) {
+        WARN_PRINT_ONCE(vformat("debugMesh is null"));
+        return;
+    }
     if (!node || current_depth > svo->maxDepth) return;
 
     bool is_painting = node->voxel->isSolid() || (show_empty && node->voxel->isEmpty());
@@ -938,16 +974,16 @@ void SvoNavmesh::draw_svo_v2(OctreeNode* node, int current_depth, int min_depth,
         float size = 2 * voxelSize / pow(2, current_depth);
 
         if (node->debugChecked || (current_depth >= min_depth && current_depth <= max_depth)) {
-            node->debugMesh.set_transform(Transform3D(Basis(), node->center));
-            node->debugMesh.set_visible(true);
+            node->debugMesh->set_transform(Transform3D(Basis(), node->center));
+            node->debugMesh->set_visible(true);
         }
         else {
-            node->debugMesh.set_visible(false);
+            node->debugMesh->set_visible(false);
         }
 
     }
     else {
-        node->debugMesh.set_visible(false);
+        node->debugMesh->set_visible(false);
     }
 
     for (int i = 0; i < 8; i++) {
@@ -957,99 +993,12 @@ void SvoNavmesh::draw_svo_v2(OctreeNode* node, int current_depth, int min_depth,
     }
 }
 
-//已弃用; Abandon
-void SvoNavmesh::draw_svo_v1(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
-    if (!node || current_depth > max_depth) return;  // 如果当前深度超过最大深度，停止递归
-
-    float size = 2*voxelSize / pow(2, current_depth);   // 计算当前深度的体素尺寸
-
-    // 检查是否在指定深度范围内
-    if (current_depth >= min_depth && current_depth <= max_depth) {
-        // 创建 MeshInstance3D
-            //小开销版
-            //MeshInstance3D* mesh_instance = get_mesh_instance_from_pool();
-            //active_meshes.push_back(mesh_instance);  // 标记为活跃，以便后续回收
-            //大开销版
-            MeshInstance3D* mesh_instance = memnew(MeshInstance3D);
-        // 创建 BoxMesh
-        Ref<BoxMesh> box_mesh = Ref<BoxMesh>(memnew(BoxMesh));
-        box_mesh->set_size(Vector3(size, size, size));  // 设置盒子大小
-
-        mesh_instance->set_mesh(box_mesh);
-        mesh_instance->set_transform(Transform3D(Basis(), node->center));  // 设置体素的全局变换，包括位置和旋转
-
-        // 设置材料
-        if (node->voxel && node->voxel->isSolid())
-        {
-            Ref<StandardMaterial3D> material = Ref<StandardMaterial3D>(memnew(StandardMaterial3D));
-            material->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
-            material->set_albedo(Color(0.2, 1.0, 0.2, 0.2));  // 半透明绿色
-            mesh_instance->set_material_override(material);
-        }
-        else {
-            Ref<ShaderMaterial> wireframe_material = Ref<ShaderMaterial>(memnew(ShaderMaterial));
-            Ref<Shader> shader = Ref<Shader>(memnew(Shader));
-            shader->set_code(R"(
-            shader_type spatial;
-            render_mode wireframe,cull_disabled;
-
-            void fragment() {
-                ALBEDO = vec3(1.0, 0.0, 0.0);
-            }
-            )");
-
-            wireframe_material->set_shader(shader);
-            mesh_instance->set_material_override(wireframe_material);
-        }
-
-        //小开销版
-        //if (!mesh_instance->get_parent()) add_child(mesh_instance);
-        //mesh_instance->set_visible(true);
-
-        //大开销版
-        add_child(mesh_instance);
-        mesh_pool.push_back(mesh_instance);
-
-    }
-
-    if (!node->voxel->isLiquid()) {
-        return;
-    }
-
-    // 递归遍历子节点
-    for (int i = 0; i < 8; i++) {
-        if (node->children[i]) {
-            draw_svo_v1(node->children[i], current_depth + 1, min_depth, max_depth); // 递归绘制子节点
-        }
-    }
-}
-//小开销版所需方法依赖，仅用于draw_svo_v1
-/*MeshInstance3D* SvoNavmesh::get_mesh_instance_from_pool() {
-    if (mesh_pool.size() > 0) {
-        MeshInstance3D* instance = mesh_pool[mesh_pool.size() - 1]; // 获取最后一个元素
-        mesh_pool.remove_at(mesh_pool.size() - 1); // 移除最后一个元素
-        return instance;
-    }
-    return memnew(MeshInstance3D); // 如果池中没有可用对象，创建新的实例
-}
-void SvoNavmesh::recycle_mesh_instance(MeshInstance3D* instance) {
-    instance->set_visible(false);  // 隐藏实例，避免渲染
-    mesh_pool.push_back(instance);  // 将实例回收到池中
-}
-void SvoNavmesh::clear_mesh_instances() {
-    // 清空活跃列表，并回收所有实例
-    for (int i = 0; i < active_meshes.size(); ++i) {
-        recycle_mesh_instance(active_meshes[i]);
-    }
-    active_meshes.clear();
-}*/
-
 /**
  Helper function to calculate the heuristic based on Euclidean distance
  */
 float heuristic(Vector3 a, Vector3 b) {
-    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);  // Manhattan distance
     return a.distance_to(b);  // Euclidean distance
+    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);  // Manhattan distance
 }
 float heuristic(OctreeNode* a, OctreeNode* b) {
     return heuristic(a->center, b->center);
@@ -1076,10 +1025,10 @@ Vector<Vector3> reconstruct_path(const Dictionary& came_from, const Vector3& end
  */
 OctreeNode* get_lowest_f_score_node(const Vector<OctreeNode*>& open_set, const Dictionary& f_score) {
     OctreeNode* lowest = open_set[0];
-    float lowest_score = f_score[lowest->debugMesh.get_instance_id()];
+    float lowest_score = f_score[lowest->debugMesh->get_instance_id()];
     for (int i = 1; i < open_set.size(); i++) {
         OctreeNode* temp = open_set[i];
-        float score = f_score[temp->debugMesh.get_instance_id()];
+        float score = f_score[temp->debugMesh->get_instance_id()];
         if (score < lowest_score) {
             lowest = temp;
             lowest_score = score;
@@ -1335,39 +1284,56 @@ Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_best(const Vector<Vector3
 }
 
 /**
- * A* pathfinding with debug draw.
+ * A* pathfinding.
  *
  * @param start: The path start position(world).
  * @param end: The path end position(world).
  * @param agent_r: The radius of nav agent.
+ * @param is_smooth: Whether show smoothed path.
  */
-void SvoNavmesh::find_path_and_draw(const Vector3 start, const Vector3 end, float agent_r) {
+Array SvoNavmesh::find_path(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+    // both points need to be in empty
+    // TODO: change this when ready for game
     if (query_voxel(start) || query_voxel(end)) {
         UtilityFunctions::print("Point inside SOLID!");
-        return;
+        return Array();
     }
 
-    uint64_t begin_time = Time::get_singleton()->get_ticks_msec();
+    // get raw path
+    uint64_t begin_time = Time::get_singleton()->get_ticks_usec();
 
-    Vector<Vector3> path = find_path(start, end, agent_r);
+    Vector<Vector3> path = find_raw_path(start, end, agent_r);
     if (path.is_empty()) {
         UtilityFunctions::print("Path finding failed!");
-        return;
+        return Array();
     }
 
-    uint64_t end_time = Time::get_singleton()->get_ticks_msec();
-    WARN_PRINT_ED(vformat("Path finding with %d milliseconds", end_time - begin_time));
+    uint64_t end_time = Time::get_singleton()->get_ticks_usec();
+    WARN_PRINT_ED(vformat("Path finding with %d microseconds", end_time - begin_time));
 
-    RID space_rid = this->get_world_3d()->get_space();
+    // smooth path
+    if (is_smooth) {
+        RID space_rid = this->get_world_3d()->get_space();
 
-    begin_time = Time::get_singleton()->get_ticks_msec();
+        begin_time = Time::get_singleton()->get_ticks_usec();
 
-    path = smooth_path_string_pulling_best(path, agent_r, space_rid);
+        path = smooth_path_string_pulling_best(path, agent_r, space_rid);
 
-    end_time = Time::get_singleton()->get_ticks_msec();
-    WARN_PRINT_ED(vformat("Smooth path with %d milliseconds", end_time - begin_time));
+        end_time = Time::get_singleton()->get_ticks_usec();
+        WARN_PRINT_ED(vformat("Smooth path with %d microseconds", end_time - begin_time));
+    }
 
-    init_debug_path(path, agent_r);
+    debug_path = path; // Store the path for else possible use
+
+    // debug rendering
+    if(debug_mode) init_debug_path(path, agent_r);
+
+    // return with array
+    Array path_array;
+    for (const Vector3& point : path) {
+        path_array.append(point);
+    }
+    return path_array;
 }
 
 /**
@@ -1375,8 +1341,6 @@ void SvoNavmesh::find_path_and_draw(const Vector3 start, const Vector3 end, floa
  For static debug draw only.
  */
 void SvoNavmesh::init_debug_path(const Vector<Vector3>& path, float agent_r) {
-    debug_path = path; // Store the path for else possible use
-
     // Clear old debug children
     // 清除旧的调试对象
     for (int i = 0; i < path_pool.size(); ++i) {
@@ -1477,7 +1441,7 @@ void SvoNavmesh::init_debug_path(const Vector<Vector3>& path, float agent_r) {
  * @param end: The path end position(world).
  * @param agent_r: The radius of nav agent.
  */
-Vector<Vector3> SvoNavmesh::find_path(const Vector3 start, const Vector3 end, float agent_r) {
+Vector<Vector3> SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end, float agent_r) {
     Vector<OctreeNode*> open_set;
     Dictionary came_from;
     Dictionary g_score;
@@ -1490,8 +1454,8 @@ Vector<Vector3> SvoNavmesh::find_path(const Vector3 start, const Vector3 end, fl
 
     came_from[start_node->center] = start_grid;  // manual add start
     open_set.push_back(start_node);
-    g_score[start_node->debugMesh.get_instance_id()] = 0;
-    f_score[start_node->debugMesh.get_instance_id()] = heuristic(start_node, end_node);
+    g_score[start_node->debugMesh->get_instance_id()] = 0;
+    f_score[start_node->debugMesh->get_instance_id()] = heuristic(start_node, end_node);
 
     while (!open_set.is_empty()) {
         OctreeNode* current = get_lowest_f_score_node(open_set, f_score);
@@ -1510,18 +1474,18 @@ Vector<Vector3> SvoNavmesh::find_path(const Vector3 start, const Vector3 end, fl
             // This is because in svo, we cannt init g_score for all the OctreeNodes before loops.
             // std:: is used here, which is not good for godot regulation.
             // 如果neighbor不在g_score中，将其初始化为非常高的值
-            if (!g_score.has(neighbor->debugMesh.get_instance_id())) {
-                g_score[neighbor->debugMesh.get_instance_id()] = std::numeric_limits<float>::max();  // 使用最大float值初始化
+            if (!g_score.has(neighbor->debugMesh->get_instance_id())) {
+                g_score[neighbor->debugMesh->get_instance_id()] = std::numeric_limits<float>::max();  // 使用最大float值初始化
             }
 
             //float temp_current = (float)g_score[current];
-            float tentative_g_score = (float)g_score[current->debugMesh.get_instance_id()] + current->center.distance_to(neighbor->center);
+            float tentative_g_score = (float)g_score[current->debugMesh->get_instance_id()] + current->center.distance_to(neighbor->center);
             //float temp_neighbor = (float)g_score[neighbor];
 
-            if (tentative_g_score < (float)g_score[neighbor->debugMesh.get_instance_id()]) {
+            if (tentative_g_score < (float)g_score[neighbor->debugMesh->get_instance_id()]) {
                 came_from[neighbor->center] = current->center;
-                g_score[neighbor->debugMesh.get_instance_id()] = tentative_g_score;
-                f_score[neighbor->debugMesh.get_instance_id()] = tentative_g_score + heuristic(neighbor, end_node);
+                g_score[neighbor->debugMesh->get_instance_id()] = tentative_g_score;
+                f_score[neighbor->debugMesh->get_instance_id()] = tentative_g_score + heuristic(neighbor, end_node);
 
                 if (!open_set.has(neighbor)) {
                     open_set.push_back(neighbor);

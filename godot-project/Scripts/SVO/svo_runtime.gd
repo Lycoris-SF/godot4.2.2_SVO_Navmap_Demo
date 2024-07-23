@@ -1,9 +1,11 @@
 extends SvoNavmesh
 
 func _ready():
-	if self is SvoNavmesh:
+	if self is SvoNavmesh and self.is_visible_in_tree():
 		self.clear_svo(false)
 		self.refresh_svo()
+		if not Engine.is_editor_hint():
+			self.rebuild_svo()
 
 func _input(event):
 	# Receives key input

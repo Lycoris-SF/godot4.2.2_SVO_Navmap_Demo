@@ -45,7 +45,7 @@ namespace godot {
         OctreeNode* neighbors[6];
 
         // debug draw
-        MeshInstance3D debugMesh;
+        MeshInstance3D* debugMesh;
         Ref<BoxMesh> debugBoxMesh;
         bool debugChecked;
 
