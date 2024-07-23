@@ -51,6 +51,7 @@ namespace godot {
 
         // <debug draw>
         bool debug_mode;
+        bool node_ready;
         int DrawRef_minDepth;
         int DrawRef_maxDepth;
         bool show_empty;
@@ -63,18 +64,32 @@ namespace godot {
         bool get_show_empty() const;
         void set_show_empty(bool show_empty);
         OctreeNode* debugChecked_node;
+        // v2
         Vector<MeshInstance3D*> mesh_pool;  // MeshInstance3D children in SvoNavmesh: Node3D
-        Vector<Ref<BoxMesh>> waste_pool;  // BoxMesh to recycle
+        Vector<Ref<BoxMesh>> waste_pool;    // BoxMesh to recycle
+        // v3
+        Vector<OctreeNode*> exist_meshes;   // Node of MeshInstance3D children in SvoNavmesh: Node3D
+        Vector<OctreeNode*> active_meshes;  // Node of active MeshInstance list
+        
+        //
         Vector<Vector3> debug_path;
         Vector<MeshInstance3D*> path_pool;
-        //Vector<MeshInstance3D*> active_meshes;  // active MeshInstance list
 
+        // v2
         void init_debug_mesh(OctreeNode* node, int depth);
-        void init_debug_path(const Vector<Vector3>& path, float agent_r);
         void reset_pool();
         void force_clear_debug_mesh();
-        void reset_debugCheck();
         void draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth);
+        // v3
+        void init_debug_mesh_v3();
+        void init_debug_mesh_v3(OctreeNode* node, int depth);
+        void reset_pool_v3();
+        void draw_svo_v3(OctreeNode* node, int current_depth, int min_depth, int max_depth);
+        MeshInstance3D* get_mesh_instance_from_pool();
+
+        //
+        void init_debug_path(Vector<Vector3>& path, float agent_r);
+        void reset_debugCheck();
         // </debug draw>
 
         // <neighbors>

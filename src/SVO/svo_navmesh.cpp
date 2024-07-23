@@ -10,6 +10,17 @@
 
 using namespace godot;
 
+// print example
+// WARN_PRINT("");
+// WARN_PRINT_ONCE(vformat(""));
+// WARN_PRINT_ED(vformat(""));
+// UtilityFunctions::print("");
+// UtilityFunctions::print(vformat(""));
+
+void OctreeNode::_bind_methods()
+{
+
+}
 void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("insert_voxel", "position"), &SvoNavmesh::insert_voxel);
     ClassDB::bind_method(D_METHOD("query_voxel", "position"), &SvoNavmesh::query_voxel);
@@ -53,23 +64,16 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path);
 }
 
-SvoNavmesh::SvoNavmesh(){
-    maxDepth = 3;
-    voxelSize = 1.0f;
-    testdouble = 1.14;
-
-    debug_mode = false;
-    DrawRef_minDepth = 1;
-    DrawRef_maxDepth = 3;
-    show_empty = true;
-    debugChecked_node = nullptr;
-
+SvoNavmesh::SvoNavmesh(): 
+    maxDepth(3), voxelSize(1.0f), testdouble(1.14f), debug_mode(false), node_ready(false),
+    DrawRef_minDepth(1), DrawRef_maxDepth(3), show_empty(true), debugChecked_node(nullptr)
+{
     svo = memnew(SparseVoxelOctree);
 }
-
 SvoNavmesh::~SvoNavmesh() {
     //call_deferred("reset_pool");
     if(svo) memdelete(svo);
+    svo = nullptr;
     //reset_wastepool();
 }
 
@@ -145,9 +149,11 @@ void SvoNavmesh::insert_voxel(Vector3 world_position) {
     }
 
     refresh_svo();
-    reset_pool();
+    //reset_pool();
+    if (debug_mode) reset_pool_v3();
     svo->insert(grid_position);
-    init_debug_mesh(svo->root, 1);
+    //init_debug_mesh(svo->root, 1);
+    if (debug_mode) init_debug_mesh_v3();
     init_neighbors();
 }
 /**
@@ -266,11 +272,17 @@ void SvoNavmesh::set_debug_mode(bool debug_mode) {
     // TODO: when ready for demo game,
     //       this needs to be removed,
     //       debug_mode should only control rendering in game.
-    if (debug_mode) {
-        reset_pool();
-        init_debug_mesh(svo->root, 1);
+    if (node_ready) {
+        if (debug_mode) {
+            //reset_pool();
+            //init_debug_mesh(svo->root, 1);
+            init_debug_mesh_v3();
+        }
+        else {
+            //force_clear_debug_mesh();
+            reset_pool_v3();
+        }
     }
-    else force_clear_debug_mesh();
 }
 int SvoNavmesh::get_DR_min_depth() const {
     return DrawRef_minDepth;
@@ -318,13 +330,13 @@ void SvoNavmesh::rebuild_svo() {
     svo->voxelSize = voxelSize;
 
     if (debug_mode) {
-        reset_pool();
+        //reset_pool();
+        reset_pool_v3();
         svo->clear();
-        //init_debug_mesh(svo->root, 1);
 
         insert_svo_based_on_collision_shapes();
-        //reset_pool();
-        init_debug_mesh(svo->root, 1);
+        //init_debug_mesh(svo->root, 1);
+        init_debug_mesh_v3();
         init_neighbors();
     }
     else {
@@ -348,6 +360,7 @@ void SvoNavmesh::refresh_svo() {
     // rebuild_svo is the only needed right now.
 
     //if (debug_mode) reset_pool();
+    if (debug_mode) reset_pool_v3();
     if (svo->maxDepth != maxDepth) {
         if (maxDepth < svo->maxDepth) {
             // compress
@@ -366,6 +379,7 @@ void SvoNavmesh::refresh_svo() {
         svo->update_node_centers();
     }
     //if (debug_mode) init_debug_mesh(svo->root, 1);
+    if (debug_mode) init_debug_mesh_v3();
     init_neighbors();
 }
 
@@ -375,7 +389,8 @@ void SvoNavmesh::refresh_svo() {
  * @param clear_setting: whether also clear svo setting.
  */
 void SvoNavmesh::clear_svo(bool clear_setting) {
-    if (debug_mode) reset_pool();
+    //if (debug_mode) reset_pool();
+    if (debug_mode) reset_pool_v3();
     if (clear_setting) {
         // clear svo and settings
         maxDepth = 3;
@@ -386,7 +401,8 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
         // clear only svo
         svo->clear();
     }
-    if (debug_mode) init_debug_mesh(svo->root, 1);
+    //if (debug_mode) init_debug_mesh(svo->root, 1);
+    if (debug_mode) init_debug_mesh_v3();
     init_neighbors();
 }
 
@@ -707,13 +723,18 @@ float SvoNavmesh::get_info() {
 void SvoNavmesh::_ready() {
     if (debug_mode)
     {
-        reset_pool();
-        init_debug_mesh(svo->root, 1);
+        //reset_pool();
+        //init_debug_mesh(svo->root, 1);
+        reset_pool_v3();
+        init_debug_mesh_v3();
     }
     init_neighbors();
+    node_ready = true;
+
+    refresh_svo();
 }
 void SvoNavmesh::_process(double delta) {
-    if (debug_mode) draw_svo_v2(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
+    if (debug_mode) draw_svo_v3(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
 }
 void SvoNavmesh::_physics_process(double delta)
 {
@@ -760,39 +781,9 @@ void SvoNavmesh::_exit_tree(){
 
 /**
  This method needs to be called manually before changes are involved in the svo structure.
- 牵涉到svo结构变化需要手动调用此方法
+ 牵涉到svo结构变化前需要手动调用此方法
  Debug rendering only
  */
-/*void SvoNavmesh::reset_pool_v1() {
-    if (!mesh_pool.is_empty()) {
-        for (MeshInstance3D* instance : mesh_pool) {
-            if (instance && instance->get_parent() == this) {
-                remove_child(instance);
-                // if (!waste_pool.has(instance)) waste_pool.push_back(instance);
-                // instance->queue_free();
-            } else {
-                UtilityFunctions::print("Instance is not a child of this node or is null");
-            }
-        }
-        mesh_pool.clear();
-    }
-    if (!path_pool.is_empty()) {
-        // Clear existing path_pool if necessary
-        for (int i = 0; i < path_pool.size(); ++i) {
-            if (path_pool[i] && path_pool[i]->get_parent() == this) {
-                remove_child(path_pool[i]);
-                memdelete(path_pool[i]);
-            } else {
-                UtilityFunctions::print("Path pool element is not a child of this node or is null");
-            }
-        }
-        path_pool.clear();
-    }
-    target_rids.clear();
-    reset_debugCheck();
-
-    // UtilityFunctions::print(vformat("Waste pool count: %d", waste_pool.size()));
-}*/
 void SvoNavmesh::reset_pool() {
     if (!mesh_pool.is_empty()) {
         for (MeshInstance3D* instance : mesh_pool) {
@@ -814,7 +805,6 @@ void SvoNavmesh::reset_pool() {
     target_rids.clear();
     reset_debugCheck();
 }
-
 void SvoNavmesh::force_clear_debug_mesh() {
     if (!mesh_pool.is_empty()) {
         for (MeshInstance3D* instance : mesh_pool) {
@@ -837,6 +827,35 @@ void SvoNavmesh::force_clear_debug_mesh() {
     reset_debugCheck();
 }
 
+/**
+ This method needs to be called manually before changes are involved in the svo structure.
+ 牵涉到svo结构变化前需要手动调用此方法
+ Debug rendering only
+ */
+void SvoNavmesh::reset_pool_v3() {
+    if (!exist_meshes.is_empty()) {
+        for (int i = 0; i < exist_meshes.size(); ++i) {
+            OctreeNode* instance_node = exist_meshes[i];
+            if (instance_node) {
+                remove_child(instance_node->debugMesh);
+                instance_node->freeDebugMesh();
+            }
+        }
+        exist_meshes.clear();
+    }
+    if (!path_pool.is_empty()) {
+        // Clear existing path_pool if necessary
+        for (MeshInstance3D* instance : path_pool) {
+            remove_child(instance);
+            memdelete(instance);
+            //instance->queue_free();
+        }
+        path_pool.clear();
+    }
+    target_rids.clear();
+    reset_debugCheck();
+}
+
 void SvoNavmesh::reset_debugCheck() {
     if (debugChecked_node) {
         if (debugChecked_node->voxel && debugChecked_node->voxel->isSolid())
@@ -852,8 +871,8 @@ void SvoNavmesh::reset_debugCheck() {
 }
 
 /**
- This method needs to be called manually if changes are involved in the svo structure.
- 牵涉到svo结构变化需要手动调用此方法
+ This method needs to be called manually after changes are involved in the svo structure.
+ 牵涉到svo结构变化后需要手动调用此方法
  Debug rendering only
  */
 void SvoNavmesh::init_debug_mesh(OctreeNode* node, int depth)
@@ -892,6 +911,69 @@ void SvoNavmesh::init_debug_mesh(OctreeNode* node, int depth)
     for (int i = 0; i < 8; i++) {
         if (node->children[i]) {
             init_debug_mesh(node->children[i], depth + 1);
+        }
+    }
+}
+
+/**
+ This method needs to be called manually after changes are involved in the svo structure.
+ 牵涉到svo结构变化后需要手动调用此方法
+ Debug rendering only
+ */
+void SvoNavmesh::init_debug_mesh_v3() {
+    init_debug_mesh_v3(svo->root, 1);
+    if (!exist_meshes.is_empty()) {
+        for (int i = 0; i < exist_meshes.size(); ++i) {
+            OctreeNode* instance_node = exist_meshes[i];
+            if (instance_node && !active_meshes.has(instance_node)) {
+                remove_child(instance_node->debugMesh);
+                instance_node->freeDebugMesh();
+            }
+        }
+        exist_meshes.clear();
+    }
+    if (!active_meshes.is_empty()) {
+        for (OctreeNode* instance_node : active_meshes) {
+            exist_meshes.push_back(instance_node);
+        }
+        active_meshes.clear();
+    }
+}
+void SvoNavmesh::init_debug_mesh_v3(OctreeNode* node, int depth)
+{
+    if (!node || depth > svo->maxDepth) return;
+
+    float size = 2 * voxelSize / pow(2, depth);
+
+    if (depth <= svo->maxDepth) {
+        if (!node->isDebugMeshValid()) {
+            node->debugMesh = get_mesh_instance_from_pool();
+        }
+        if (node->debugBoxMesh.is_null()) {
+            node->debugBoxMesh = Ref<BoxMesh>(memnew(BoxMesh));
+        }
+        node->debugBoxMesh->set_size(Vector3(size, size, size));
+        node->debugMesh->set_mesh(node->debugBoxMesh);
+
+        // Set up materials
+        // 设置材料
+        if (node->voxel && node->voxel->isSolid())
+        {
+            node->debugMesh->set_material_override(debugSolidMaterial);
+        }
+        else {
+            node->debugMesh->set_material_override(debugEmptyMaterial);
+        }
+
+        if(node->debugMesh->get_parent() != this) add_child(node->debugMesh);
+        active_meshes.push_back(node);
+    }
+
+    // Recursively traverse child nodes
+    // 递归遍历子节点
+    for (int i = 0; i < 8; i++) {
+        if (node->children[i]) {
+            init_debug_mesh_v3(node->children[i], depth + 1);
         }
     }
 }
@@ -991,6 +1073,53 @@ void SvoNavmesh::draw_svo_v2(OctreeNode* node, int current_depth, int min_depth,
             draw_svo_v2(node->children[i], current_depth + 1, min_depth, max_depth);
         }
     }
+}
+
+/**
+ Draw the svo for debuging.
+ */
+void SvoNavmesh::draw_svo_v3(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
+    if (!node->isDebugMeshValid()) {
+        WARN_PRINT_ONCE(vformat("debugMesh is null"));
+        return;
+    }
+    if (!node || current_depth > svo->maxDepth) return;
+
+    bool is_painting = node->voxel->isSolid() || (show_empty && node->voxel->isEmpty());
+
+    if (is_painting || node->debugChecked) {
+        float size = 2 * voxelSize / pow(2, current_depth);
+
+        if (node->debugChecked || (current_depth >= min_depth && current_depth <= max_depth)) {
+            node->debugMesh->set_transform(Transform3D(Basis(), node->center));
+            node->debugMesh->set_visible(true);
+        }
+        else {
+            node->debugMesh->set_visible(false);
+        }
+
+    }
+    else {
+        node->debugMesh->set_visible(false);
+    }
+
+    for (int i = 0; i < 8; i++) {
+        if (node->children[i]) {
+            draw_svo_v3(node->children[i], current_depth + 1, min_depth, max_depth);
+        }
+    }
+}
+
+/**
+ debugMesh dynamic support.
+ */
+MeshInstance3D* SvoNavmesh::get_mesh_instance_from_pool() {
+    if (exist_meshes.size() > 0) {
+        MeshInstance3D* instance = exist_meshes[exist_meshes.size() - 1]->debugMesh; // 获取最后一个元素
+        exist_meshes.remove_at(exist_meshes.size() - 1); // 移除最后一个元素
+        return instance;
+    }
+    return memnew(MeshInstance3D); // 如果池中没有可用对象，创建新的实例
 }
 
 /**
@@ -1340,7 +1469,7 @@ Array SvoNavmesh::find_path(const Vector3 start, const Vector3 end, float agent_
  init MeshInstance3D for path finding.
  For static debug draw only.
  */
-void SvoNavmesh::init_debug_path(const Vector<Vector3>& path, float agent_r) {
+void SvoNavmesh::init_debug_path(Vector<Vector3>& path, float agent_r) {
     // Clear old debug children
     // 清除旧的调试对象
     for (int i = 0; i < path_pool.size(); ++i) {

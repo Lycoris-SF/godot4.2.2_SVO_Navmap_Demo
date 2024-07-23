@@ -3,8 +3,8 @@
 
 using namespace godot;
 
-Voxel::Voxel() { state = VS_EMPTY; size = 1.0f; }
-Voxel::Voxel(VoxelState voxel_state = VS_EMPTY, float voxel_size = 1.0f):state(voxel_state), size(voxel_size){}
+Voxel::Voxel(): state(VS_EMPTY), size(1.0f){}
+Voxel::Voxel(VoxelState voxel_state = VS_EMPTY, float voxel_size = 1.0f): state(voxel_state), size(voxel_size){}
 bool Voxel::isSolid()
 {
     return state == VS_SOLID;
@@ -29,34 +29,27 @@ String Voxel::state_to_string(VoxelState state) const {
     }
 }
 
-void OctreeNode::_bind_methods()
-{
-
-}
 OctreeNode::OctreeNode():
-    currentDepth(1), currentIndex(0), isLeaf(true), voxel(nullptr), debugChecked(false)
+    currentDepth(1), currentIndex(0), isLeaf(true), voxel(nullptr), 
+    father(nullptr), center(Vector3(0, 0, 0)), debugChecked(false), debugMesh(nullptr)
 {
-    father = nullptr;
     for (int i = 0; i < 8; ++i) {
         children[i] = nullptr;
     }
     for (int i = 0; i < 6; ++i) {
         neighbors[i] = nullptr;
     }
-    center = Vector3(0, 0, 0);
 }
-OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index) :
+OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index):
     currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr), 
-    debugChecked(false), debugMesh(nullptr)
+    father(father_node), center(Vector3(0, 0, 0)), debugChecked(false), debugMesh(nullptr)
 {
-    father = father_node;
     for (int i = 0; i < 8; ++i) {
         children[i] = nullptr;
     }
     for (int i = 0; i < 6; ++i) {
         neighbors[i] = nullptr;
     }
-    center = Vector3(0, 0, 0);
 }
 OctreeNode::~OctreeNode() {
     if (voxel) memdelete(voxel); 
@@ -77,6 +70,19 @@ OctreeNode::~OctreeNode() {
         }
     }
 }
+
+void OctreeNode::setDebugMesh(MeshInstance3D* mesh) {
+    debugMesh = mesh;
+}
+void OctreeNode::freeDebugMesh() {
+    if (debugMesh) {
+        memdelete(debugMesh);
+        debugMesh = nullptr;
+    }
+}
+bool OctreeNode::isDebugMeshValid() const {
+    return debugMesh != nullptr;
+}
 void OctreeNode::queue_free_debug_mesh() {
     if (debugMesh->is_inside_tree()) {
         debugMesh->queue_free();
@@ -93,21 +99,22 @@ String OctreeNode::get_voxel_info() const{
         voxel_info);
 }
 
-SparseVoxelOctree::SparseVoxelOctree() {
-    maxDepth = 3;
-    voxelSize = 1.0f;
-    root = memnew(OctreeNode(nullptr, 1, 0));
+SparseVoxelOctree::SparseVoxelOctree():
+    maxDepth(3), voxelSize(1.0f)
+{
+    root = memnew(OctreeNode());
     root->voxel = memnew(Voxel(VS_EMPTY, voxelSize));
     create_empty_children(root, 1);
 }
-SparseVoxelOctree::SparseVoxelOctree(int max_depth, float voxel_size)
-    : maxDepth(max_depth), voxelSize(voxel_size){
-    root = memnew(OctreeNode(nullptr,1,0));
+SparseVoxelOctree::SparseVoxelOctree(int max_depth, float voxel_size):
+    maxDepth(max_depth), voxelSize(voxel_size)
+{
+    root = memnew(OctreeNode());
     root->voxel = memnew(Voxel(VS_EMPTY, voxelSize));
     create_empty_children(root, 1);
 }
 SparseVoxelOctree::~SparseVoxelOctree() {
-    if(root) memdelete(root);
+    if (root) memdelete(root); root = nullptr;
 }
 
 float SparseVoxelOctree::calActualVoxelSize(int depth) {

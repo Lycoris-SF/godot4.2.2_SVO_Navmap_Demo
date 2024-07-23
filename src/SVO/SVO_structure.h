@@ -51,12 +51,16 @@ namespace godot {
 
         // debug print
         String get_voxel_info() const;
+        void setDebugMesh(MeshInstance3D* mesh);
+        void freeDebugMesh();
+        bool isDebugMeshValid() const;
 
         OctreeNode();
         OctreeNode(OctreeNode* father_node, int depth = -1, int index = -1);
         ~OctreeNode();
 
     private:
+
         void queue_free_debug_mesh();
 
     protected:
