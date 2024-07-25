@@ -35,7 +35,7 @@ void SvoNavmesh::_bind_methods() {
 
     ClassDB::bind_method(D_METHOD("get_voxel_size"), &SvoNavmesh::get_voxel_size);
     ClassDB::bind_method(D_METHOD("set_voxel_size", "size"), &SvoNavmesh::set_voxel_size);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "voxel_size"), "set_voxel_size", "get_voxel_size");
+    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "rootVoxelSize"), "set_voxel_size", "get_voxel_size");
 
     ClassDB::bind_method(D_METHOD("get_max_depth"), &SvoNavmesh::get_max_depth);
     ClassDB::bind_method(D_METHOD("set_max_depth", "depth"), &SvoNavmesh::set_max_depth);
@@ -61,11 +61,15 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("insert_svo_based_on_collision_shapes"), &SvoNavmesh::insert_svo_based_on_collision_shapes);
 
     // path finding
-    ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path);
+    ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v1);
+    // path finding multi thread
+    ClassDB::bind_method(D_METHOD("find_path_v2", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v2);
+    ClassDB::bind_method(D_METHOD("find_path_multi_thread", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_multi_thread);
+    ClassDB::bind_method(D_METHOD("get_last_path_result"), &SvoNavmesh::get_last_path_result);
 }
 
 SvoNavmesh::SvoNavmesh(): 
-    maxDepth(3), voxelSize(1.0f), testdouble(1.14f), debug_mode(false), node_ready(false),
+    maxDepth(3), rootVoxelSize(1.0f), testdouble(1.14f), debug_mode(false), node_ready(false),
     DrawRef_minDepth(1), DrawRef_maxDepth(3), show_empty(true), debugChecked_node(nullptr)
 {
     svo = memnew(SparseVoxelOctree);
@@ -142,8 +146,8 @@ void SvoNavmesh::insert_voxel(Vector3 world_position) {
 
     // Check if the grid coordinates are valid (i.e. within the root node range)
     // 检查网格坐标是否有效(即在根节点范围内)
-    if (grid_position.x < -voxelSize / 2 || grid_position.y < -voxelSize / 2 || grid_position.z < -voxelSize / 2 ||
-        grid_position.x >= voxelSize / 2 || grid_position.y >= voxelSize / 2 || grid_position.z >= voxelSize / 2) {
+    if (grid_position.x < -rootVoxelSize / 2 || grid_position.y < -rootVoxelSize / 2 || grid_position.z < -rootVoxelSize / 2 ||
+        grid_position.x >= rootVoxelSize / 2 || grid_position.y >= rootVoxelSize / 2 || grid_position.z >= rootVoxelSize / 2) {
         UtilityFunctions::print("insert: Position out of valid range.");
         return;
     }
@@ -166,8 +170,8 @@ bool SvoNavmesh::query_voxel(Vector3 world_position) {
 
     // Check if the grid coordinates are valid (i.e. within the root node range)
     // 检查网格坐标是否有效(即在根节点范围内)
-    if (grid_position.x < -voxelSize / 2 || grid_position.y < -voxelSize / 2 || grid_position.z < -voxelSize / 2 ||
-        grid_position.x >= voxelSize / 2 || grid_position.y >= voxelSize / 2 || grid_position.z >= voxelSize / 2) {
+    if (grid_position.x < -rootVoxelSize / 2 || grid_position.y < -rootVoxelSize / 2 || grid_position.z < -rootVoxelSize / 2 ||
+        grid_position.x >= rootVoxelSize / 2 || grid_position.y >= rootVoxelSize / 2 || grid_position.z >= rootVoxelSize / 2) {
         UtilityFunctions::print("query: Position out of valid range.");
         return false;
     }
@@ -229,10 +233,13 @@ void SvoNavmesh::check_voxel_with_id(String id) {
 void SvoNavmesh::update_voxel(Vector3 world_position, bool isSolid) {
     Vector3 grid_position = worldToGrid(world_position);
 
+    WARN_PRINT("Update is not ready for now.");
+    return;
+
     // Check if the grid coordinates are valid (i.e. within the root node range)
     // 检查网格坐标是否有效(即在根节点范围内)
-    if (grid_position.x < -voxelSize / 2 || grid_position.y < -voxelSize / 2 || grid_position.z < -voxelSize / 2 ||
-        grid_position.x >= voxelSize / 2 || grid_position.y >= voxelSize / 2 || grid_position.z >= voxelSize / 2) {
+    if (grid_position.x < -rootVoxelSize / 2 || grid_position.y < -rootVoxelSize / 2 || grid_position.z < -rootVoxelSize / 2 ||
+        grid_position.x >= rootVoxelSize / 2 || grid_position.y >= rootVoxelSize / 2 || grid_position.z >= rootVoxelSize / 2) {
         UtilityFunctions::print("update: Position out of valid range.");
         return;
     }
@@ -242,11 +249,11 @@ void SvoNavmesh::update_voxel(Vector3 world_position, bool isSolid) {
 }
 
 float SvoNavmesh::get_voxel_size() const {
-    return voxelSize;
+    return rootVoxelSize;
 }
 void SvoNavmesh::set_voxel_size(float size) {
-    if (voxelSize != size) {
-        voxelSize = size;
+    if (rootVoxelSize != size) {
+        rootVoxelSize = size;
     }
 }
 
@@ -320,6 +327,10 @@ void SvoNavmesh::set_show_empty(bool show_empty) {
 }
 // </debug draw set/get>
 
+Array SvoNavmesh::get_last_path_result() {
+    return path_result;
+}
+
 /**
  Clear the svo and total rebuild base on collision shapes.
  */
@@ -327,7 +338,7 @@ void SvoNavmesh::rebuild_svo() {
     uint64_t begin = Time::get_singleton()->get_ticks_msec();
 
     svo->maxDepth = maxDepth;
-    svo->voxelSize = voxelSize;
+    svo->voxelSize = rootVoxelSize;
 
     if (debug_mode) {
         //reset_pool();
@@ -346,7 +357,7 @@ void SvoNavmesh::rebuild_svo() {
     }
 
     uint64_t end = Time::get_singleton()->get_ticks_msec();
-    WARN_PRINT_ED(vformat("build svo with %d milliseconds", end - begin));
+    UtilityFunctions::print(vformat("init neighbors with %d milliseconds", end - begin));
 }
 
 /**
@@ -373,8 +384,8 @@ void SvoNavmesh::refresh_svo() {
             svo->expand_node();
         }
     }
-    if (svo->voxelSize != voxelSize) {
-        svo->voxelSize = voxelSize;
+    if (svo->voxelSize != rootVoxelSize) {
+        svo->voxelSize = rootVoxelSize;
         // refresh center
         svo->update_node_centers();
     }
@@ -394,7 +405,7 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
     if (clear_setting) {
         // clear svo and settings
         maxDepth = 3;
-        voxelSize = 1.0f;
+        rootVoxelSize = 1.0f;
         svo->clear();
     }
     else {
@@ -429,7 +440,7 @@ void SvoNavmesh::insert_svo_based_on_collision_shapes() {
     traverse_svo_space_and_insert(svo->root, 1, space_rid);
 
     uint64_t end = Time::get_singleton()->get_ticks_msec();
-    WARN_PRINT_ED(vformat("insert svo nodes with %d milliseconds", end - begin));
+    UtilityFunctions::print(vformat("insert svo nodes with %d milliseconds", end - begin));
 }
 
 /**
@@ -879,7 +890,7 @@ void SvoNavmesh::init_debug_mesh(OctreeNode* node, int depth)
 {
     if (!node || depth > svo->maxDepth) return;
 
-    float size = 2 * voxelSize / pow(2, depth);
+    float size = 2 * rootVoxelSize / pow(2, depth);
 
     if (depth <= svo->maxDepth) {
         if (!node->debugMesh) {
@@ -943,7 +954,7 @@ void SvoNavmesh::init_debug_mesh_v3(OctreeNode* node, int depth)
 {
     if (!node || depth > svo->maxDepth) return;
 
-    float size = 2 * voxelSize / pow(2, depth);
+    float size = 2 * rootVoxelSize / pow(2, depth);
 
     if (depth <= svo->maxDepth) {
         if (!node->isDebugMeshValid()) {
@@ -1053,7 +1064,7 @@ void SvoNavmesh::draw_svo_v2(OctreeNode* node, int current_depth, int min_depth,
     bool is_painting = node->voxel->isSolid() || (show_empty && node->voxel->isEmpty());
 
     if (is_painting || node->debugChecked) {
-        float size = 2 * voxelSize / pow(2, current_depth);
+        float size = 2 * rootVoxelSize / pow(2, current_depth);
 
         if (node->debugChecked || (current_depth >= min_depth && current_depth <= max_depth)) {
             node->debugMesh->set_transform(Transform3D(Basis(), node->center));
@@ -1088,7 +1099,7 @@ void SvoNavmesh::draw_svo_v3(OctreeNode* node, int current_depth, int min_depth,
     bool is_painting = node->voxel->isSolid() || (show_empty && node->voxel->isEmpty());
 
     if (is_painting || node->debugChecked) {
-        float size = 2 * voxelSize / pow(2, current_depth);
+        float size = 2 * rootVoxelSize / pow(2, current_depth);
 
         if (node->debugChecked || (current_depth >= min_depth && current_depth <= max_depth)) {
             node->debugMesh->set_transform(Transform3D(Basis(), node->center));
@@ -1154,10 +1165,10 @@ Vector<Vector3> reconstruct_path(const Dictionary& came_from, const Vector3& end
  */
 OctreeNode* get_lowest_f_score_node(const Vector<OctreeNode*>& open_set, const Dictionary& f_score) {
     OctreeNode* lowest = open_set[0];
-    float lowest_score = f_score[lowest->debugMesh->get_instance_id()];
+    float lowest_score = f_score[lowest->get_instance_id()];
     for (int i = 1; i < open_set.size(); i++) {
         OctreeNode* temp = open_set[i];
-        float score = f_score[temp->debugMesh->get_instance_id()];
+        float score = f_score[temp->get_instance_id()];
         if (score < lowest_score) {
             lowest = temp;
             lowest_score = score;
@@ -1339,24 +1350,24 @@ bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3
 /**
  fast smooth_path (though not lot faster)
  */
-Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_fast(const Vector<Vector3>& path, float agent_radius, RID& space_rid) {
-    if (path.size() < 2) {
-        return path;
+void SvoNavmesh::smooth_path_string_pulling_fast(float agent_radius, RID& space_rid) {
+    if (exist_path.size() < 2) {
+        return;
     }
 
     Vector<Vector3> smooth_path;
-    smooth_path.push_back(path[0]);
+    smooth_path.push_back(exist_path[0]);
 
     int i = 0;
-    while (i < path.size() - 1) {
+    while (i < exist_path.size() - 1) {
         int j = i + 1;
-        while (j < path.size()) {
+        while (j < exist_path.size()) {
             bool can_traverse;
             if (agent_radius > 0.0f) {
-                can_traverse = can_travel_directly_with_cylinder(path[i], path[j], agent_radius, space_rid);
+                can_traverse = can_travel_directly_with_cylinder(exist_path[i], exist_path[j], agent_radius, space_rid);
             }
             else {
-                can_traverse = can_travel_directly_with_ray(path[i], path[j], space_rid);
+                can_traverse = can_travel_directly_with_ray(exist_path[i], exist_path[j], space_rid);
             }
 
             if (!can_traverse) {
@@ -1370,34 +1381,33 @@ Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_fast(const Vector<Vector3
             j++;
         }
 
-        smooth_path.push_back(path[j - 1]);
+        smooth_path.push_back(exist_path[j - 1]);
         i = j - 1;
     }
-
-    return smooth_path;
+    exist_path = smooth_path;
 }
 
 /**
  perfect smooth_path
  */
-Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_best(const Vector<Vector3>& path, float agent_radius, RID& space_rid) {
-    if (path.size() < 2) {
-        return path;
+void SvoNavmesh::smooth_path_string_pulling_best(float agent_radius, RID& space_rid) {
+    if (exist_path.size() < 2) {
+        return;
     }
 
     Vector<Vector3> smooth_path;
-    smooth_path.push_back(path[0]);
+    smooth_path.push_back(exist_path[0]);
 
     int i = 0;
-    while (i < path.size() - 1) {
+    while (i < exist_path.size() - 1) {
         int best_j = i + 1;
-        for (int j = i + 1; j < path.size(); ++j) {
+        for (int j = i + 1; j < exist_path.size(); ++j) {
             bool can_traverse;
             if (agent_radius > 0.0f) {
-                can_traverse = can_travel_directly_with_cylinder(path[i], path[j], agent_radius, space_rid);
+                can_traverse = can_travel_directly_with_cylinder(exist_path[i], exist_path[j], agent_radius, space_rid);
             }
             else {
-                can_traverse = can_travel_directly_with_ray(path[i], path[j], space_rid);
+                can_traverse = can_travel_directly_with_ray(exist_path[i], exist_path[j], space_rid);
             }
 
             if (can_traverse) {
@@ -1405,11 +1415,11 @@ Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_best(const Vector<Vector3
             }
         }
 
-        smooth_path.push_back(path[best_j]);
+        smooth_path.push_back(exist_path[best_j]);
         i = best_j;
     }
 
-    return smooth_path;
+    exist_path = smooth_path;
 }
 
 /**
@@ -1420,7 +1430,7 @@ Vector<Vector3> SvoNavmesh::smooth_path_string_pulling_best(const Vector<Vector3
  * @param agent_r: The radius of nav agent.
  * @param is_smooth: Whether show smoothed path.
  */
-Array SvoNavmesh::find_path(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+Array SvoNavmesh::find_path_v1(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
     // both points need to be in empty
     // TODO: change this when ready for game
     if (query_voxel(start) || query_voxel(end)) {
@@ -1429,47 +1439,156 @@ Array SvoNavmesh::find_path(const Vector3 start, const Vector3 end, float agent_
     }
 
     // get raw path
-    uint64_t begin_time = Time::get_singleton()->get_ticks_usec();
+    uint64_t begin_time_u = Time::get_singleton()->get_ticks_usec();
+    uint64_t begin_time_m = Time::get_singleton()->get_ticks_msec();
 
-    Vector<Vector3> path = find_raw_path(start, end, agent_r);
-    if (path.is_empty()) {
+    find_raw_path(start, end, agent_r);
+    if (exist_path.is_empty()) {
         UtilityFunctions::print("Path finding failed!");
         return Array();
     }
 
-    uint64_t end_time = Time::get_singleton()->get_ticks_usec();
-    WARN_PRINT_ED(vformat("Path finding with %d microseconds", end_time - begin_time));
+    uint64_t end_time_u = Time::get_singleton()->get_ticks_usec();
+    uint64_t end_time_m = Time::get_singleton()->get_ticks_msec();
+
+    if (end_time_m - begin_time_m < 1) {
+        // If the millisecond timing is less than 1 millisecond, use microsecond output
+        // 如果毫秒计时小于1毫秒，使用微秒输出
+        UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
+    }
+    else {
+        // Otherwise use milliseconds output
+        // 否则使用毫秒输出
+        UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
+    }
 
     // smooth path
     if (is_smooth) {
         RID space_rid = this->get_world_3d()->get_space();
 
-        begin_time = Time::get_singleton()->get_ticks_usec();
+        begin_time_u = Time::get_singleton()->get_ticks_usec();
+        begin_time_m = Time::get_singleton()->get_ticks_msec();
 
-        path = smooth_path_string_pulling_best(path, agent_r, space_rid);
+        smooth_path_string_pulling_best(agent_r, space_rid);
 
-        end_time = Time::get_singleton()->get_ticks_usec();
-        WARN_PRINT_ED(vformat("Smooth path with %d microseconds", end_time - begin_time));
+        end_time_u = Time::get_singleton()->get_ticks_usec();
+        end_time_m = Time::get_singleton()->get_ticks_msec();
+
+        if (end_time_m - begin_time_m < 1) {
+            // If the millisecond timing is less than 1 millisecond, use microsecond output
+            // 如果毫秒计时小于1毫秒，使用微秒输出
+            UtilityFunctions::print(vformat("Smooth path took %d microseconds", end_time_u - begin_time_u));
+        }
+        else {
+            // Otherwise use milliseconds output
+            // 否则使用毫秒输出
+            UtilityFunctions::print(vformat("Smooth path took %d milliseconds", end_time_m - begin_time_m));
+        }
     }
-
-    debug_path = path; // Store the path for else possible use
 
     // debug rendering
-    if(debug_mode) init_debug_path(path, agent_r);
+    if(debug_mode) init_exist_path(agent_r);
 
     // return with array
-    Array path_array;
-    for (const Vector3& point : path) {
-        path_array.append(point);
+    path_result.clear();
+    for (const Vector3& point : exist_path) {
+        path_result.append(point);
     }
-    return path_array;
+    return path_result;
+}
+
+/**
+ * A* pathfinding void.
+ *
+ * @param start: The path start position(world).
+ * @param end: The path end position(world).
+ * @param agent_r: The radius of nav agent.
+ * @param is_smooth: Whether show smoothed path.
+ */
+void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+    // both points need to be in empty
+    // TODO: change this when ready for game
+    if (query_voxel(start) || query_voxel(end)) {
+        UtilityFunctions::print("Point inside SOLID!");
+        return;
+    }
+
+    // get raw path
+    uint64_t begin_time_u = Time::get_singleton()->get_ticks_usec();
+    uint64_t begin_time_m = Time::get_singleton()->get_ticks_msec();
+
+    find_raw_path(start, end, agent_r);
+    if (exist_path.is_empty()) {
+        UtilityFunctions::print("Path finding failed!");
+        return;
+    }
+
+    uint64_t end_time_u = Time::get_singleton()->get_ticks_usec();
+    uint64_t end_time_m = Time::get_singleton()->get_ticks_msec();
+
+    if (end_time_m - begin_time_m < 1) {
+        // If the millisecond timing is less than 1 millisecond, use microsecond output
+        // 如果毫秒计时小于1毫秒，使用微秒输出
+        UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
+    }
+    else {
+        // Otherwise use milliseconds output
+        // 否则使用毫秒输出
+        UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
+    }
+
+    // smooth path
+    if (is_smooth) {
+        RID space_rid = this->get_world_3d()->get_space();
+
+        begin_time_u = Time::get_singleton()->get_ticks_usec();
+        begin_time_m = Time::get_singleton()->get_ticks_msec();
+
+        smooth_path_string_pulling_best(agent_r, space_rid);
+
+        end_time_u = Time::get_singleton()->get_ticks_usec();
+        end_time_m = Time::get_singleton()->get_ticks_msec();
+
+        if (end_time_m - begin_time_m < 1) {
+            // If the millisecond timing is less than 1 millisecond, use microsecond output
+            // 如果毫秒计时小于1毫秒，使用微秒输出
+            UtilityFunctions::print(vformat("Smooth path took %d microseconds", end_time_u - begin_time_u));
+        }
+        else {
+            // Otherwise use milliseconds output
+            // 否则使用毫秒输出
+            UtilityFunctions::print(vformat("Smooth path took %d milliseconds", end_time_m - begin_time_m));
+        }
+    }
+
+    // debug rendering
+    if (debug_mode) init_exist_path(agent_r);
+
+    // refresh with array
+    path_result.clear();
+    for (const Vector3& point : exist_path) {
+        path_result.append(point);
+    }
+}
+
+/**
+ * A* pathfinding multi thread.
+ *
+ * @param start: The path start position(world).
+ * @param end: The path end position(world).
+ * @param agent_r: The radius of nav agent.
+ * @param is_smooth: Whether show smoothed path.
+ */
+void SvoNavmesh::find_path_multi_thread(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+    // this one will just crash
+    call_deferred("find_path_v2", start, end, agent_r);
 }
 
 /**
  init MeshInstance3D for path finding.
  For static debug draw only.
  */
-void SvoNavmesh::init_debug_path(Vector<Vector3>& path, float agent_r) {
+void SvoNavmesh::init_exist_path(float agent_r) {
     // Clear old debug children
     // 清除旧的调试对象
     for (int i = 0; i < path_pool.size(); ++i) {
@@ -1513,7 +1632,7 @@ void SvoNavmesh::init_debug_path(Vector<Vector3>& path, float agent_r) {
 
     // Create path points & path connecting lines
     // 创建路径点和连接线
-    for (int i = 0; i < path.size(); ++i) {
+    for (int i = 0; i < exist_path.size(); ++i) {
         MeshInstance3D* sphere = memnew(MeshInstance3D);
 
         //Vector3 world_point = gridToWorld(path[i]);
@@ -1521,14 +1640,14 @@ void SvoNavmesh::init_debug_path(Vector<Vector3>& path, float agent_r) {
 
         sphere->set_mesh(sphereMesh);
         sphere->set_material_override(material2);
-        sphere->set_transform(Transform3D(Basis(), path[i]));
+        sphere->set_transform(Transform3D(Basis(), exist_path[i]));
 
         add_child(sphere);
         path_pool.push_back(sphere);
 
         // If it is not the last point, create a cylinder connecting to the next point
         // 如果不是最后一个点，创建圆柱体连接到下一个点
-        if (i < path.size() - 1) {
+        if (i < exist_path.size() - 1) {
             MeshInstance3D* cylinder = memnew(MeshInstance3D);
 
             cylinder->set_mesh(cylinderMesh);
@@ -1537,8 +1656,8 @@ void SvoNavmesh::init_debug_path(Vector<Vector3>& path, float agent_r) {
             // Place a cylinder between two waypoints
             // 在两个路径点之间放置一个圆柱体
             //Vector3 next_world_point = gridToWorld(path[i + 1]);
-            Vector3 direction = (path[i + 1] - path[i]).normalized();
-            float distance = path[i + 1].distance_to(path[i]);
+            Vector3 direction = (exist_path[i + 1] - exist_path[i]).normalized();
+            float distance = exist_path[i + 1].distance_to(exist_path[i]);
             // 默认的向上方向
             Vector3 up(0, 1, 0);
             // 计算旋转轴
@@ -1553,7 +1672,7 @@ void SvoNavmesh::init_debug_path(Vector<Vector3>& path, float agent_r) {
                 Quaternion rotation(rotation_axis, angle);
                 transform.basis = Basis(rotation);
             }
-            transform.origin = (path[i] + path[i + 1]) * 0.5;
+            transform.origin = (exist_path[i] + exist_path[i + 1]) * 0.5;
             transform.basis.scale_local(Vector3(1, distance, 1)); // 圆柱体的缩放
 
             cylinder->set_transform(transform);
@@ -1570,7 +1689,7 @@ void SvoNavmesh::init_debug_path(Vector<Vector3>& path, float agent_r) {
  * @param end: The path end position(world).
  * @param agent_r: The radius of nav agent.
  */
-Vector<Vector3> SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end, float agent_r) {
+void SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end, float agent_r) {
     Vector<OctreeNode*> open_set;
     Dictionary came_from;
     Dictionary g_score;
@@ -1583,14 +1702,15 @@ Vector<Vector3> SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end
 
     came_from[start_node->center] = start_grid;  // manual add start
     open_set.push_back(start_node);
-    g_score[start_node->debugMesh->get_instance_id()] = 0;
-    f_score[start_node->debugMesh->get_instance_id()] = heuristic(start_node, end_node);
+    g_score[start_node->get_instance_id()] = 0;
+    f_score[start_node->get_instance_id()] = heuristic(start_node, end_node);
 
     while (!open_set.is_empty()) {
         OctreeNode* current = get_lowest_f_score_node(open_set, f_score);
         if (current == end_node) {
             came_from[end_grid] = end_node->center;  // manual add end
-            return reconstruct_path(came_from, end_grid);
+            exist_path = reconstruct_path(came_from, end_grid);
+            return;
         }
 
         open_set.erase(current);
@@ -1603,18 +1723,18 @@ Vector<Vector3> SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end
             // This is because in svo, we cannt init g_score for all the OctreeNodes before loops.
             // std:: is used here, which is not good for godot regulation.
             // 如果neighbor不在g_score中，将其初始化为非常高的值
-            if (!g_score.has(neighbor->debugMesh->get_instance_id())) {
-                g_score[neighbor->debugMesh->get_instance_id()] = std::numeric_limits<float>::max();  // 使用最大float值初始化
+            if (!g_score.has(neighbor->get_instance_id())) {
+                g_score[neighbor->get_instance_id()] = std::numeric_limits<float>::max();  // 使用最大float值初始化
             }
 
             //float temp_current = (float)g_score[current];
-            float tentative_g_score = (float)g_score[current->debugMesh->get_instance_id()] + current->center.distance_to(neighbor->center);
+            float tentative_g_score = (float)g_score[current->get_instance_id()] + current->center.distance_to(neighbor->center);
             //float temp_neighbor = (float)g_score[neighbor];
 
-            if (tentative_g_score < (float)g_score[neighbor->debugMesh->get_instance_id()]) {
+            if (tentative_g_score < (float)g_score[neighbor->get_instance_id()]) {
                 came_from[neighbor->center] = current->center;
-                g_score[neighbor->debugMesh->get_instance_id()] = tentative_g_score;
-                f_score[neighbor->debugMesh->get_instance_id()] = tentative_g_score + heuristic(neighbor, end_node);
+                g_score[neighbor->get_instance_id()] = tentative_g_score;
+                f_score[neighbor->get_instance_id()] = tentative_g_score + heuristic(neighbor, end_node);
 
                 if (!open_set.has(neighbor)) {
                     open_set.push_back(neighbor);
@@ -1622,5 +1742,6 @@ Vector<Vector3> SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end
             }
         }
     }
-    return Vector<Vector3>(); // Return empty path if no path found
+    exist_path = Vector<Vector3>();
+    // Return empty path if no path found
 }

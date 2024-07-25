@@ -15,7 +15,9 @@ func _enter_tree():
 	dock_content.get_node("HBoxContainer Clear/ClearAll Button").pressed.connect(_on_clear_all_pressed)
 	dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Button/Insert Button").pressed.connect(_on_insert_pressed)
 	dock_content.get_node("HBoxContainer Update/Update Button").pressed.connect(_on_update_pressed)
+	dock_content.get_node("HBoxContainer Query/Query Button").pressed.connect(_on_query_pressed)
 	dock_content.get_node("HBoxContainer Path End/Find Path Button").pressed.connect(_on_find_path_pressed)
+	dock_content.get_node("HBoxContainer ID Query/Find Rand Path Button").pressed.connect(_on_find_rand_path_pressed)
 	dock_content.get_node("HBoxContainer ID Query/Check Voxel Info Button").pressed.connect(_on_check_id_pressed)
 	dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Button").connect("gui_input", _on_gui_input)
 	dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Button/PopupMenu").connect("id_pressed", _on_popup_id_pressed)
@@ -93,6 +95,17 @@ func _on_update_pressed():
 
 		var position = Vector3(spin_box_x, spin_box_y, spin_box_z)
 		selected_node.update_voxel(position,is_solid)
+func _on_query_pressed():
+	var editor_selection = get_editor_interface().get_selection()
+	var selected_node = editor_selection.get_selected_nodes()[0]
+	if selected_node is SvoNavmesh:
+		var spin_box_x = dock_content.get_node("HBoxContainer Query/SpinBoxX").get_value()
+		var spin_box_y = dock_content.get_node("HBoxContainer Query/SpinBoxY").get_value()
+		var spin_box_z = dock_content.get_node("HBoxContainer Query/SpinBoxZ").get_value()
+
+		var position = Vector3(spin_box_x, spin_box_y, spin_box_z)
+		var is_solid = selected_node.query_voxel(position)
+		print("Target voxel solid: ", is_solid)
 		
 func _on_check_id_pressed():
 	var editor_selection = get_editor_interface().get_selection()
@@ -116,6 +129,45 @@ func _on_find_path_pressed():
 		var radius = dock_content.get_node("HBoxContainer Path Start/SpinBoxR").get_value()
 		var is_smooth = dock_content.get_node("HBoxContainer Path End/CheckBox").is_pressed()
 
-		var start = Vector3(start_x, start_y, start_z)
-		var end = Vector3(end_x, end_y, end_z)
-		selected_node.find_path(start,end,radius,is_smooth)
+		if(radius < 0):
+			print("radius should not < 0")
+		else:
+			var start = Vector3(start_x, start_y, start_z)
+			var end = Vector3(end_x, end_y, end_z)
+			selected_node.find_path(start,end,radius,is_smooth)
+			
+func _on_find_rand_path_pressed():
+	var editor_selection = get_editor_interface().get_selection()
+	var selected_node = editor_selection.get_selected_nodes()[0]
+	if selected_node is SvoNavmesh:
+		var radius = dock_content.get_node("HBoxContainer Path Start/SpinBoxR").get_value()
+		var is_smooth = dock_content.get_node("HBoxContainer Path End/CheckBox").is_pressed()
+		var rand_empty_in_svo = _find_rand_empty_pos(selected_node)
+		var rand_empty2_in_svo = _find_rand_empty_pos(selected_node)
+		
+		if(radius < 0):
+			print("radius should not < 0")
+		else:
+			selected_node.find_path(rand_empty_in_svo,rand_empty2_in_svo,radius,is_smooth)
+			
+func _find_rand_empty_pos(selected_node):
+	var root_size = selected_node.rootVoxelSize
+	var root_pos = selected_node.global_position
+	var half_size = root_size * 0.5
+	var random_point = Vector3()
+	var max_attempts = 100
+	var attempts = 0
+	
+	while attempts < max_attempts:
+		var random_x = randf_range(-half_size, half_size)
+		var random_y = randf_range(-half_size, half_size)
+		var random_z = randf_range(-half_size, half_size)
+		random_point = Vector3(random_x, random_y, random_z) + root_pos
+		
+		if not selected_node.query_voxel(random_point):
+			return random_point
+			
+		attempts += 1
+		
+	print("Failed to find an empty position after", max_attempts, "attempts.")
+	return null

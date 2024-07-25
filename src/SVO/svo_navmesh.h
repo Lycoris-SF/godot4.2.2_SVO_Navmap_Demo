@@ -46,7 +46,7 @@ namespace godot {
     private:
         SparseVoxelOctree *svo;
         int maxDepth;
-        float voxelSize;    // size of the root cube
+        float rootVoxelSize;    // size of the root cube
         double testdouble;
 
         // <debug draw>
@@ -72,7 +72,7 @@ namespace godot {
         Vector<OctreeNode*> active_meshes;  // Node of active MeshInstance list
         
         //
-        Vector<Vector3> debug_path;
+        Vector<Vector3> exist_path;
         Vector<MeshInstance3D*> path_pool;
 
         // v2
@@ -88,7 +88,7 @@ namespace godot {
         MeshInstance3D* get_mesh_instance_from_pool();
 
         //
-        void init_debug_path(Vector<Vector3>& path, float agent_r);
+        void init_exist_path(float agent_r);
         void reset_debugCheck();
         // </debug draw>
 
@@ -99,7 +99,7 @@ namespace godot {
         // </neighbors>
 
         // path finding
-        Vector<Vector3> find_raw_path(const Vector3 start, const Vector3 end, float agent_r);
+        void find_raw_path(const Vector3 start, const Vector3 end, float agent_r);
 
         // tools
         Vector3 worldToGrid(Vector3 world_position);
@@ -108,8 +108,8 @@ namespace godot {
         void traverse_svo_space_and_insert(OctreeNode* node, int depth, RID& space_rid);
         bool can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid);
         bool can_travel_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid);
-        Vector<Vector3> smooth_path_string_pulling_fast(const Vector<Vector3>& path, float agent_radius, RID& space_rid);
-        Vector<Vector3> smooth_path_string_pulling_best(const Vector<Vector3>& path, float agent_radius, RID& space_rid);
+        void smooth_path_string_pulling_fast(float agent_radius, RID& space_rid);
+        void smooth_path_string_pulling_best(float agent_radius, RID& space_rid);
 
     protected:
         static void _bind_methods();
@@ -142,7 +142,13 @@ namespace godot {
         float get_info();
 
         // path finding
-        Array find_path(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth = true);
+        Array path_result;
+        Array get_last_path_result();
+        // v1
+        Array find_path_v1(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth = true);
+        // v2
+        void find_path_v2(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth = true);
+        void find_path_multi_thread(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth = true);
 
         // override
         void _ready();
