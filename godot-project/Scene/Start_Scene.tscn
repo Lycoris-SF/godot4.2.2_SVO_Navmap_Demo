@@ -57,5 +57,22 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 text = "demo_scene_simplified"
 
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 20
+
+[node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 25
+text = "F: Find a new random path;    E: Console print path(if console is usable); 
+Mouse: Rotate camera;     Mouse right click(hold): Active camera rotate; 
+WASD: Move camera;     LShift: Accelerate;     LCtrl: Down Space: Up;     Esc: Back to menu"
+
 [connection signal="pressed" from="CenterContainer/Button1" to="." method="_on_StartButton1_pressed"]
 [connection signal="pressed" from="CenterContainer2/Button2" to="." method="_on_StartButton2_pressed"]

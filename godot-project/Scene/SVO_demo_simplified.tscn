@@ -1,6 +1,7 @@
-[gd_scene load_steps=1200 format=3 uid="uid://3nscm2mqqamy"]
+[gd_scene load_steps=1201 format=3 uid="uid://3nscm2mqqamy"]
 
 [ext_resource type="Script" path="res://Scripts/Camera/free_camera.gd" id="1_kdrwc"]
+[ext_resource type="Script" path="res://Scripts/Scene/Running_Scene.gd" id="1_rafpn"]
 [ext_resource type="Texture2D" uid="uid://hrl0x4u8rlcr" path="res://Model/spider exp project_Image_0.png" id="2_5sy7c"]
 [ext_resource type="Texture2D" uid="uid://gltiorwgqtaq" path="res://Model/spider exp project_Image_1.png" id="3_wxwmj"]
 [ext_resource type="Script" path="res://Scripts/SVO/svo_runtime.gd" id="4_47m0g"]
@@ -13799,13 +13800,13 @@ bounce = 0.4
 margin = 0.0
 radius = 0.125
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_710y8"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mjnoa"]
 albedo_color = Color(0.607843, 0.196078, 0.196078, 1)
 metallic = 0.8
 roughness = 0.5
 
 [sub_resource type="SphereMesh" id="SphereMesh_tcwwe"]
-material = SubResource("StandardMaterial3D_710y8")
+material = SubResource("StandardMaterial3D_mjnoa")
 radius = 0.075
 height = 0.15
 
@@ -13826,6 +13827,7 @@ metallic = 0.8
 roughness = 0.5
 
 [node name="SvoDemo" type="Node3D"]
+script = ExtResource("1_rafpn")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.707107, 0.5, -0.5, 0, 0.707107, 0.707107, 0.707107, -0.5, 0.5, 0, 10, 0)
@@ -18678,7 +18680,6 @@ debug_mode = true
 rootVoxelSize = 11.0
 max_depth = 6
 DrawRef_minDepth = 3
-DrawRef_maxDepth = 6
 show_empty = false
 debug_path_scale = 0.2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9.5, 0)
