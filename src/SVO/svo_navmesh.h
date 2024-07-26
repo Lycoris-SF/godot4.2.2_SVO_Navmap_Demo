@@ -18,6 +18,7 @@
 #include <godot_cpp/classes/shape3d.hpp>
 #include <godot_cpp/classes/array_mesh.hpp>
 #include <godot_cpp/classes/physics_server3d.hpp>
+#include <godot_cpp/classes/shape_cast3d.hpp>
 #include <godot_cpp/classes/physics_direct_space_state3d.hpp>
 #include <godot_cpp/classes/physics_point_query_parameters3d.hpp>
 #include <godot_cpp/classes/physics_ray_query_parameters3d.hpp>
@@ -34,11 +35,12 @@ namespace godot {
     static Ref<StandardMaterial3D> debugSolidMaterial;
     static Ref<StandardMaterial3D> debugCheckMaterial;
     static Ref<ShaderMaterial> debugEmptyMaterial;
+    static Ref<StandardMaterial3D> debugPathMaterialB;
+    static Ref<StandardMaterial3D> debugPathMaterialY;
+    static Ref<StandardMaterial3D> debugPathMaterialR;
     static Ref<Shader> EmptyMaterial_shader;
     // PhysicsBody3Ds' RID
     static Vector<RID> target_rids;
-    // Test only
-    static TestLog mesh_count_log;
 
     class SvoNavmesh : public Node3D {
         GDCLASS(SvoNavmesh, Node3D)
@@ -47,7 +49,9 @@ namespace godot {
         SparseVoxelOctree *svo;
         int maxDepth;
         float rootVoxelSize;    // size of the root cube
+        float minVoxelSize;     // size of the smallest cube
         double testdouble;
+        int collision_layer;    // Manual sync required
 
         // <debug draw>
         bool debug_mode;
@@ -55,6 +59,7 @@ namespace godot {
         int DrawRef_minDepth;
         int DrawRef_maxDepth;
         bool show_empty;
+        float debug_path_scale;
         bool get_debug_mode() const;
         void set_debug_mode(bool debug_mode);
         int get_DR_min_depth() const;
@@ -63,23 +68,20 @@ namespace godot {
         void set_DR_max_depth(int depth);
         bool get_show_empty() const;
         void set_show_empty(bool show_empty);
+        int get_collision_layer() const;
+        void set_collision_layer(int layer);
+        float get_debug_path_scale() const;
+        void set_debug_path_scale(float scale);
         OctreeNode* debugChecked_node;
-        // v2
-        Vector<MeshInstance3D*> mesh_pool;  // MeshInstance3D children in SvoNavmesh: Node3D
-        Vector<Ref<BoxMesh>> waste_pool;    // BoxMesh to recycle
+
         // v3
         Vector<OctreeNode*> exist_meshes;   // Node of MeshInstance3D children in SvoNavmesh: Node3D
         Vector<OctreeNode*> active_meshes;  // Node of active MeshInstance list
         
-        //
+        // debug path
         Vector<Vector3> exist_path;
         Vector<MeshInstance3D*> path_pool;
 
-        // v2
-        void init_debug_mesh(OctreeNode* node, int depth);
-        void reset_pool();
-        void force_clear_debug_mesh();
-        void draw_svo_v2(OctreeNode* node, int current_depth, int min_depth, int max_depth);
         // v3
         void init_debug_mesh_v3();
         void init_debug_mesh_v3(OctreeNode* node, int depth);
@@ -87,8 +89,8 @@ namespace godot {
         void draw_svo_v3(OctreeNode* node, int current_depth, int min_depth, int max_depth);
         MeshInstance3D* get_mesh_instance_from_pool();
 
-        //
-        void init_exist_path(float agent_r);
+        // debug path
+        void init_debug_path(float agent_r);
         void reset_debugCheck();
         // </debug draw>
 
@@ -104,12 +106,18 @@ namespace godot {
         // tools
         Vector3 worldToGrid(Vector3 world_position);
         Vector3 gridToWorld(Vector3 grid_position);
+        bool check_point_inside_mesh(Vector3 point, RID& space_rid);
+        bool check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size, RID& space_rid);
+        bool is_box_fully_inside_mesh(Vector3 position, float size, RID& space_rid);
         void collect_collision_shapes(Node* node, RID &space_rid);
         void traverse_svo_space_and_insert(OctreeNode* node, int depth, RID& space_rid);
         bool can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid);
         bool can_travel_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid);
         void smooth_path_string_pulling_fast(float agent_radius, RID& space_rid);
-        void smooth_path_string_pulling_best(float agent_radius, RID& space_rid);
+        void smooth_path_string_pulling_fast_v2(float agent_radius, RID& space_rid);
+        void smooth_path_string_pulling_full(float agent_radius, RID& space_rid);
+        void smooth_path_string_pulling_full_v2(float agent_radius, RID& space_rid);
+        Vector<Vector3> subdivide_path(Vector3 start, Vector3 end, float segment_length);
 
     protected:
         static void _bind_methods();

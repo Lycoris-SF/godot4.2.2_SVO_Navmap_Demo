@@ -9,6 +9,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_a18qc")
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 custom_minimum_size = Vector2(150, 0)
@@ -31,7 +32,30 @@ metadata/_edit_use_anchors_ = true
 [node name="Button1" type="Button" parent="CenterContainer"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-text = "SVO_Scene"
-script = ExtResource("1_a18qc")
+text = "SVO_demo_scene"
 
-[connection signal="pressed" from="CenterContainer/Button1" to="CenterContainer/Button1" method="_on_StartButton_pressed"]
+[node name="CenterContainer2" type="CenterContainer" parent="."]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.402344
+anchor_top = 0.296682
+anchor_right = 0.597656
+anchor_bottom = 0.368441
+offset_left = 37.4997
+offset_top = 107.75
+offset_right = -37.4998
+offset_bottom = 92.2502
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.5, 1.5)
+pivot_offset = Vector2(75, 15.5)
+metadata/_edit_use_anchors_ = true
+
+[node name="Button2" type="Button" parent="CenterContainer2"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+text = "demo_scene_simplified"
+
+[connection signal="pressed" from="CenterContainer/Button1" to="." method="_on_StartButton1_pressed"]
+[connection signal="pressed" from="CenterContainer2/Button2" to="." method="_on_StartButton2_pressed"]

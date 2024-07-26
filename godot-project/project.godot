@@ -19,13 +19,20 @@ config/icon="res://icon.svg"
 
 enabled=PackedStringArray("res://addons/svo_editor_plugin/plugin.cfg")
 
+[layer_names]
+
+3d_physics/layer_1="Static"
+3d_physics/layer_2="Player"
+3d_physics/layer_3="Dynamic"
+3d_physics/layer_4="Bot"
+3d_physics/layer_5="SVO"
+
 [memory]
 
 limits/multithreaded_server/rid_pool_prealloc=120
 
 [physics]
 
-3d/run_on_separate_thread=true
 3d/default_gravity_vector=Vector3(0, 0, 0)
 
 [rendering]
