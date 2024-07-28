@@ -18680,6 +18680,7 @@ debug_mode = true
 rootVoxelSize = 11.0
 max_depth = 6
 DrawRef_minDepth = 3
+DrawRef_maxDepth = 6
 show_empty = false
 debug_path_scale = 0.2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9.5, 0)

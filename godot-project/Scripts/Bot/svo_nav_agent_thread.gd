@@ -1,6 +1,11 @@
 extends RigidBody3D
 
 var thread: Thread
+var request_queue = []
+var result_queue = {}
+var mutex = Mutex.new()
+var query_id_counter = 0
+
 var agent_r_temp = 0.125
 var svo : SvoNavmesh
 var path = []
@@ -12,12 +17,21 @@ var max_acceleration = 9.81 * 0.7  # 最大加速度, 3G
 var max_deceleration = 9.81 * 0.5  # 最大减速度, 1G
 
 func _ready():
-	#thread = Thread.new()
+	thread = Thread.new()
 	# temp solution, replace with mamager when ready for games
 	svo = $"../spider exp project/SvoNavmesh"
-	svo.connect("pathfinding_completed", _on_pathfinding_completed)
-	svo.connect("pathfinding_failed", _on_pathfinding_failed)
-			
+
+func _process(delta):
+	_process_thread_queue()
+
+func _process_thread_queue():
+	mutex.lock()
+	for query in request_queue:
+		var result = can_travel_directly_with_ray(query)
+		result_queue[query["id"]] = result
+	request_queue.clear()
+	mutex.unlock()
+
 func _exit_tree():
 	#thread.wait_to_finish()
 	pass
@@ -71,22 +85,9 @@ func _input(event):
 			path = svo.find_path(self.position, rand_empty_in_svo, agent_r_temp, true)
 		if event.keycode == KEY_M:
 			var rand_empty_in_svo = _find_rand_empty_pos()
-			current_target_index = 0
-			svo.find_path_multi_thread(self.position, rand_empty_in_svo, agent_r_temp, true)
-			
-
-func _threaded_pathfinding(userdata):
-	var is_smooth = true
-	svo.find_path_multi_thread(userdata[0], userdata[1], userdata[2], is_smooth)
-
-func _on_pathfinding_completed(path_result):
-	print("Pathfinding completed in SvoNavmesh")
-	path = path_result
-	# 在这里处理路径数据，例如将路径显示在场景中
-
-func _on_pathfinding_failed(reason):
-	print("Pathfinding failed. Reason: ", reason)
-	# 在这里处理路径查找失败的情况
+			var rand_empty2_in_svo = _find_rand_empty_pos()
+			var data = [rand_empty_in_svo, rand_empty2_in_svo, agent_r_temp]
+			#thread.start(_threaded_pathfinding.bind(data))
 
 func _find_rand_empty_pos():
 	var root_size = svo.rootVoxelSize
@@ -109,3 +110,61 @@ func _find_rand_empty_pos():
 		
 	print("Failed to find an empty position after", max_attempts, "attempts.")
 	return null
+
+func find_path_v2(start, end, agent_r, is_smooth):
+	if svo.query_voxel(start) || svo.query_voxel(end):
+		print("Point inside SOLID!");
+		return;
+		
+	# check direct path
+	var query_id = query_id_counter
+	query_id_counter += 1
+	var query_data = {"from": start, "to": end, "id": query_id}
+	var can_traverse = can_travel_directly_with_ray(query_data)
+	
+	if can_traverse:
+		path.clear()
+		path.append(start)
+		path.append(end)
+		print(("Direct path found."))
+	else:
+		#find_raw_path(start, end, agent_r);
+		if path.is_empty():
+			print("Path finding failed!")
+			return;
+		
+		if is_smooth:
+			#smooth_path_string_pulling_fast_v2(agent_r)
+			pass
+			
+		#if svo.debug_mode: 
+			#init_debug_path(agent_r * debug_path_scale)
+		
+
+func _threaded_function():
+	for i in range(10):  # 示例，假设有10个查询请求
+		var query_data = {"from": Vector3(0, 10, 0), "to": Vector3(0, -10, 0), "id": i}
+		mutex.lock()
+		request_queue.append(query_data)
+		mutex.unlock()
+		# 等待主线程处理结果
+		while not result_queue.has(i):
+			OS.delay_msec(10)
+		var result = result_queue[i]
+		print("Result for query ", i, ": ", result)
+		mutex.lock()
+		result_queue.erase(i)
+		mutex.unlock()
+
+func can_travel_directly_with_ray(query):
+	var space_state = get_world_3d().direct_space_state
+	var query_parameters = PhysicsRayQueryParameters3D.new()
+	query_parameters.from = query["from"]
+	query_parameters.to = query["to"]
+	var result = space_state.intersect_ray(query_parameters)
+	
+	if (!result.is_empty()):
+		var result_rid = result["rid"];
+		if (svo.target_rids.has(result_rid)):
+			return false;
+	return true;

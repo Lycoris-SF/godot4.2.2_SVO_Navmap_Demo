@@ -22,16 +22,20 @@ void OctreeNode::_bind_methods()
 
 }
 void SvoNavmesh::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("manual_init"), &SvoNavmesh::manual_init);
     ClassDB::bind_method(D_METHOD("insert_voxel", "position"), &SvoNavmesh::insert_voxel);
     ClassDB::bind_method(D_METHOD("query_voxel", "position"), &SvoNavmesh::query_voxel);
     ClassDB::bind_method(D_METHOD("check_voxel_with_id", "id"), &SvoNavmesh::check_voxel_with_id);
     ClassDB::bind_method(D_METHOD("update_voxel", "position", "isSolid"), &SvoNavmesh::update_voxel);
+    
     ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmesh::get_info);
     ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmesh::set_info);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "testdouble"), "set_info", "get_info");
+
     ClassDB::bind_method(D_METHOD("get_debug_mode"), &SvoNavmesh::get_debug_mode);
     ClassDB::bind_method(D_METHOD("set_debug_mode", "debug_mode"), &SvoNavmesh::set_debug_mode);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "debug_mode"), "set_debug_mode", "get_debug_mode");
+    
     ClassDB::bind_method(D_METHOD("get_collision_layer"), &SvoNavmesh::get_collision_layer);
     ClassDB::bind_method(D_METHOD("set_collision_layer", "layer"), &SvoNavmesh::set_collision_layer);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "collision_layer"), "set_collision_layer", "get_collision_layer");
@@ -64,27 +68,65 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("clear_svo"), &SvoNavmesh::clear_svo);
 
     // generate svo from collider
-    ClassDB::bind_method(D_METHOD("insert_svo_based_on_collision_shapes"), &SvoNavmesh::insert_svo_based_on_collision_shapes);
+    ClassDB::bind_method(D_METHOD("build_svo"), &SvoNavmesh::build_svo);
+
+    // generate svo multi thread
+    ClassDB::bind_method(D_METHOD("rebuild_svo_multi_thread"), &SvoNavmesh::rebuild_svo_multi_thread);
+    ClassDB::bind_method(D_METHOD("build_svo_v2"), &SvoNavmesh::build_svo_v2);
+    ClassDB::bind_method(D_METHOD("_on_build_thread_completed"), &SvoNavmesh::_on_build_thread_completed);
+    ClassDB::bind_method(D_METHOD("_on_collect_collision_shapes_requested","parent_node"), &SvoNavmesh::_on_collect_collision_shapes_requested);
+    ClassDB::bind_method(D_METHOD("_on_late_build_requested"), &SvoNavmesh::_on_late_build_requested);
 
     // path finding
     ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v1);
+    
     // path finding multi thread
     ClassDB::bind_method(D_METHOD("find_path_v2", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v2);
     ClassDB::bind_method(D_METHOD("find_path_multi_thread", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_multi_thread);
+    ClassDB::bind_method(D_METHOD("init_debug_path", "agent_r"), &SvoNavmesh::init_debug_path);
     ClassDB::bind_method(D_METHOD("get_last_path_result"), &SvoNavmesh::get_last_path_result);
+    ClassDB::bind_method(D_METHOD("_on_PF_thread_timeout"), &SvoNavmesh::_on_PF_thread_timeout);
+    ClassDB::bind_method(D_METHOD("_on_PF_thread_completed"), &SvoNavmesh::_on_PF_thread_completed);
+    ClassDB::bind_method(D_METHOD("_on_space_state_requested"), &SvoNavmesh::_on_space_state_requested);
+    ADD_SIGNAL(MethodInfo("pathfinding_completed", PropertyInfo(Variant::ARRAY, "path")));
+    ADD_SIGNAL(MethodInfo("pathfinding_failed", PropertyInfo(Variant::STRING, "reason")));
 }
 
 SvoNavmesh::SvoNavmesh(): 
     maxDepth(3), rootVoxelSize(1.0f), minVoxelSize(0.25f), testdouble(1.14f), debug_mode(false), collision_layer(5), 
-    debug_path_scale(1.0f), node_ready(false), DrawRef_minDepth(1), DrawRef_maxDepth(3), show_empty(true), debugChecked_node(nullptr)
+    debug_path_scale(1.0f), node_ready(false), DrawRef_minDepth(1), DrawRef_maxDepth(3), show_empty(true), 
+    debugChecked_node(nullptr), physics_mutex(nullptr), physics_semaphore(nullptr), space_state(nullptr),
+    path_finding_thread(nullptr), build_svo_thread(nullptr), is_PF_thread_active(false), PF_thread_timeout_timer(nullptr)
 {
     svo = memnew(SparseVoxelOctree);
 }
 SvoNavmesh::~SvoNavmesh() {
-    //call_deferred("reset_pool");
     if(svo) memdelete(svo);
     svo = nullptr;
-    //reset_wastepool();
+    space_state = nullptr;
+
+    if (physics_mutex) {
+        memdelete(physics_mutex);
+        physics_mutex = nullptr;
+    }
+    if (physics_semaphore) {
+        memdelete(physics_semaphore);
+        physics_semaphore = nullptr;
+    }
+    if (path_finding_thread) {
+        if(path_finding_thread->is_alive()) path_finding_thread->wait_to_finish();
+        memdelete(path_finding_thread);
+        path_finding_thread = nullptr;
+    }
+    if (build_svo_thread) {
+        if (build_svo_thread->is_alive()) build_svo_thread->wait_to_finish();
+        memdelete(build_svo_thread);
+        build_svo_thread = nullptr;
+    }
+    if (PF_thread_timeout_timer && PF_thread_timeout_timer->is_inside_tree()) {
+        remove_child(PF_thread_timeout_timer);
+        PF_thread_timeout_timer->queue_free();
+    }
 }
 
 // During set_neighbors_from_brother, the index of each child node corresponds to the index in the neighbors array.
@@ -406,14 +448,14 @@ void SvoNavmesh::rebuild_svo() {
         reset_pool_v3();
         svo->clear();
 
-        insert_svo_based_on_collision_shapes();
+        build_svo();
         //init_debug_mesh(svo->root, 1);
         init_debug_mesh_v3();
         init_neighbors();
     }
     else {
         svo->clear();
-        insert_svo_based_on_collision_shapes();
+        build_svo();
         init_neighbors();
     }
 
@@ -481,13 +523,15 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
 /**
  Generate svo from collider.
  */
-void SvoNavmesh::insert_svo_based_on_collision_shapes() {
+void SvoNavmesh::build_svo() {
     uint64_t begin = Time::get_singleton()->get_ticks_msec();
 
     Node* parent_node = get_parent();
-    RID space_rid = this->get_world_3d()->get_space();
+    space_rid = this->get_world_3d()->get_space();
+    space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+
     if (parent_node != nullptr) {
-        collect_collision_shapes(parent_node, space_rid);
+        collect_collision_shapes(parent_node);
     }
     traverse_svo_space_and_insert(svo->root, 1, space_rid);
 
@@ -501,7 +545,7 @@ void SvoNavmesh::insert_svo_based_on_collision_shapes() {
 bool SvoNavmesh::check_point_inside_mesh(Vector3 point, RID& space_rid) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
-    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    //PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
     if (!space_state) {
         ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
         return false;
@@ -541,7 +585,7 @@ bool SvoNavmesh::check_point_inside_mesh(Vector3 point, RID& space_rid) {
  */
 bool SvoNavmesh::check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size, RID& space_rid) {
     // Get the PhysicsDirectSpaceState3D instance
-    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    //PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
     if (!space_state) {
         ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
         return false;
@@ -625,7 +669,7 @@ bool SvoNavmesh::is_box_fully_inside_mesh(Vector3 position, float size, RID& spa
 /**
  Collect CollisionShape3D from PhysicsBody3D.
  */
-void SvoNavmesh::collect_collision_shapes(Node* node, RID& space_rid) {
+void SvoNavmesh::collect_collision_shapes(Node* node) {
     if (!node) return;
 
     // Traverse each node in the subtree
@@ -653,7 +697,7 @@ void SvoNavmesh::collect_collision_shapes(Node* node, RID& space_rid) {
 
         // Recursively collect collision shapes of child nodes
         // 递归地收集子节点的碰撞形状
-        collect_collision_shapes(child, space_rid);
+        collect_collision_shapes(child);
     }
 }
 
@@ -686,7 +730,7 @@ void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth, RID&
         return;
     }
 
-    if (check_box_intersect_mesh(gridToWorld(node->center), get_global_rotation(), node->voxel->size, space_rid)) {
+    if (check_box_intersect_mesh(gridToWorld(node->center), global_rotation, node->voxel->size, space_rid)) {
         if (depth == maxDepth) {
             node->voxel->state = VS_SOLID;
             node->isLeaf = true;
@@ -703,6 +747,71 @@ void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth, RID&
             svo->evaluate_homogeneity(node);
         }
     }
+}
+
+/**
+ Clear the svo and total rebuild multi thread.
+ */
+void SvoNavmesh::rebuild_svo_multi_thread() {
+    svo->maxDepth = maxDepth;
+    svo->voxelSize = rootVoxelSize;
+
+    if (debug_mode) {
+        reset_pool_v3();
+    }
+    svo->clear();
+
+    call_deferred("_on_space_state_requested");     // a late init
+    call_deferred("_on_late_build_requested");
+}
+
+/**
+ Generate svo from collider multi thread.
+ */
+void SvoNavmesh::build_svo_v2() {
+    uint64_t begin = Time::get_singleton()->get_ticks_msec();
+
+    Node* parent_node = get_parent();
+
+    if (parent_node != nullptr) {
+        call_deferred("_on_collect_collision_shapes_requested", parent_node);
+        physics_semaphore->wait();
+    }
+    traverse_svo_space_and_insert(svo->root, 1, space_rid);
+
+    uint64_t end = Time::get_singleton()->get_ticks_msec();
+    UtilityFunctions::print(vformat("insert svo nodes with %d milliseconds", end - begin));
+
+    begin = Time::get_singleton()->get_ticks_msec();
+
+    init_neighbors();
+
+    end = Time::get_singleton()->get_ticks_msec();
+    UtilityFunctions::print(vformat("init neighbors with %d milliseconds", end - begin));
+
+    call_deferred("_on_build_thread_completed");
+}
+
+void SvoNavmesh::_on_build_thread_completed() {
+    if (debug_mode) init_debug_mesh_v3();
+}
+void SvoNavmesh::_on_collect_collision_shapes_requested(Node *parent_node) {
+    collect_collision_shapes(parent_node);
+    physics_semaphore->post();
+}
+
+void SvoNavmesh::_on_late_build_requested() {
+    auto call = callable_mp(this, &SvoNavmesh::build_svo_v2);
+    Error err = build_svo_thread->start(call);
+    if (err != OK) {
+        UtilityFunctions::print("Failed to start thread");
+    }
+    //WorkerThreadPool::get_singleton()->add_task(call);
+    build_svo_thread->wait_to_finish();
+}
+
+void SvoNavmesh::_process_physics_tasks() {
+
 }
 
 SparseVoxelOctree& SvoNavmesh::get_svo() {
@@ -729,13 +838,28 @@ void SvoNavmesh::_ready() {
     node_ready = true;
 
     refresh_svo();
+
+    manual_init();
+}
+void SvoNavmesh::manual_init() {
+    global_rotation = get_global_rotation();
+
+    // init thread
+    physics_mutex = memnew(Mutex);
+    physics_semaphore = memnew(Semaphore);
+    path_finding_thread = memnew(Thread);
+    build_svo_thread = memnew(Thread);
+    PF_thread_timeout_timer = memnew(Timer);
+    PF_thread_timeout_timer->set_wait_time(10.0); // 10 seconds timeout
+    PF_thread_timeout_timer->connect("timeout", callable_mp(this, &SvoNavmesh::_on_PF_thread_timeout));
+    add_child(PF_thread_timeout_timer);
 }
 void SvoNavmesh::_process(double delta) {
     if (debug_mode) draw_svo_v3(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
 }
 void SvoNavmesh::_physics_process(double delta)
 {
-
+    _process_physics_tasks();
 }
 static void init_static_material()
 {
@@ -838,6 +962,8 @@ void SvoNavmesh::reset_debugCheck() {
  Debug rendering only
  */
 void SvoNavmesh::init_debug_mesh_v3() {
+    uint64_t begin = Time::get_singleton()->get_ticks_msec();
+
     init_debug_mesh_v3(svo->root, 1);
     if (!exist_meshes.is_empty()) {
         for (int i = 0; i < exist_meshes.size(); ++i) {
@@ -855,6 +981,9 @@ void SvoNavmesh::init_debug_mesh_v3() {
         }
         active_meshes.clear();
     }
+
+    uint64_t end = Time::get_singleton()->get_ticks_msec();
+    UtilityFunctions::print(vformat("init debug mesh with %d milliseconds", end - begin));
 }
 void SvoNavmesh::init_debug_mesh_v3(OctreeNode* node, int depth)
 {
@@ -1097,7 +1226,7 @@ Vector<OctreeNode*> get_neighbors(OctreeNode* node, float agent_r) {
 bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
-    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    //PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
     if (!space_state) {
         ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
         return false;
@@ -1193,7 +1322,7 @@ bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Ve
 bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
-    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    //PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
     if (!space_state) {
         ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
         return false;
@@ -1538,125 +1667,6 @@ Array SvoNavmesh::find_path_v1(const Vector3 start, const Vector3 end, float age
 }
 
 /**
- * A* pathfinding void.
- *
- * @param start: The path start position(world).
- * @param end: The path end position(world).
- * @param agent_r: The radius of nav agent.
- * @param is_smooth: Whether show smoothed path.
- */
-void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
-    // both points need to be in empty
-    // TODO: change this when ready for game
-    if (query_voxel(start) || query_voxel(end)) {
-        UtilityFunctions::print("Point inside SOLID!");
-        return;
-    }
-
-    uint64_t begin_time_u = Time::get_singleton()->get_ticks_usec();
-    uint64_t begin_time_m = Time::get_singleton()->get_ticks_msec();
-    uint64_t end_time_u;
-    uint64_t end_time_m;
-
-    // check direct path
-    Vector3 start_grid = worldToGrid(start);
-    Vector3 end_grid = worldToGrid(end);
-    RID space_rid = this->get_world_3d()->get_space();
-    bool can_traverse;
-    if (agent_r > 0.0f) {
-        can_traverse = can_travel_directly_with_cylinder(start_grid, end_grid, agent_r, space_rid);
-    }
-    else {
-        can_traverse = can_travel_directly_with_ray(start_grid, end_grid, space_rid);
-    }
-
-    if (can_traverse) {
-        exist_path.clear();
-        exist_path.append(start_grid);
-        exist_path.append(end_grid);
-        end_time_u = Time::get_singleton()->get_ticks_usec();
-        end_time_m = Time::get_singleton()->get_ticks_msec();
-
-        if (end_time_m - begin_time_m < 1) {
-            // If the millisecond timing is less than 1 millisecond, use microsecond output
-            // 如果毫秒计时小于1毫秒，使用微秒输出
-            UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
-        }
-        else {
-            // Otherwise use milliseconds output
-            // 否则使用毫秒输出
-            UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
-        }
-    }
-    else {
-        // get raw path
-        find_raw_path(start, end, agent_r);
-        if (exist_path.is_empty()) {
-            UtilityFunctions::print("Path finding failed!");
-            return;
-        }
-
-        end_time_u = Time::get_singleton()->get_ticks_usec();
-        end_time_m = Time::get_singleton()->get_ticks_msec();
-
-        if (end_time_m - begin_time_m < 1) {
-            // If the millisecond timing is less than 1 millisecond, use microsecond output
-            // 如果毫秒计时小于1毫秒，使用微秒输出
-            UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
-        }
-        else {
-            // Otherwise use milliseconds output
-            // 否则使用毫秒输出
-            UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
-        }
-
-        // smooth path
-        if (is_smooth) {
-            begin_time_u = Time::get_singleton()->get_ticks_usec();
-            begin_time_m = Time::get_singleton()->get_ticks_msec();
-
-            smooth_path_string_pulling_fast_v2(agent_r, space_rid);
-
-            end_time_u = Time::get_singleton()->get_ticks_usec();
-            end_time_m = Time::get_singleton()->get_ticks_msec();
-
-            if (end_time_m - begin_time_m < 1) {
-                // If the millisecond timing is less than 1 millisecond, use microsecond output
-                // 如果毫秒计时小于1毫秒，使用微秒输出
-                UtilityFunctions::print(vformat("Smooth path took %d microseconds", end_time_u - begin_time_u));
-            }
-            else {
-                // Otherwise use milliseconds output
-                // 否则使用毫秒输出
-                UtilityFunctions::print(vformat("Smooth path took %d milliseconds", end_time_m - begin_time_m));
-            }
-        }
-    }
-
-    // debug rendering
-    if (debug_mode) init_debug_path(agent_r * debug_path_scale);
-
-    // return with array
-    path_result.clear();
-    for (const Vector3& point : exist_path) {
-        path_result.append(gridToWorld(point));
-    }
-}
-
-/**
- * A* pathfinding multi thread.
- *
- * @param start: The path start position(world).
- * @param end: The path end position(world).
- * @param agent_r: The radius of nav agent.
- * @param is_smooth: Whether show smoothed path.
- */
-void SvoNavmesh::find_path_multi_thread(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
-    // this one will just crash
-    call_deferred("find_path_v2", start, end, agent_r);
-}
-
-/**
  init MeshInstance3D for path finding.
  For static debug draw only.
  */
@@ -1817,4 +1827,172 @@ void SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end, float age
     }
     exist_path = Vector<Vector3>();
     // Return empty path if no path found
+}
+
+/**
+ * A* pathfinding void.
+ *
+ * @param start: The path start position(world).
+ * @param end: The path end position(world).
+ * @param agent_r: The radius of nav agent.
+ * @param is_smooth: Whether show smoothed path.
+ */
+void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+    // both points need to be in empty
+    // TODO: change this when ready for game
+    if (query_voxel(start) || query_voxel(end)) {
+        UtilityFunctions::print("Point inside SOLID!");
+        is_PF_thread_active = false;
+        PF_thread_timeout_timer->stop();
+        call_deferred("emit_signal", "pathfinding_failed", "One of the point is inside solid");
+        return;
+    }
+
+    uint64_t begin_time_u = Time::get_singleton()->get_ticks_usec();
+    uint64_t begin_time_m = Time::get_singleton()->get_ticks_msec();
+    uint64_t end_time_u;
+    uint64_t end_time_m;
+
+    // check direct path
+    Vector3 start_grid = worldToGrid(start);
+    Vector3 end_grid = worldToGrid(end);
+    call_deferred("_on_space_state_requested");     // a late init
+    physics_semaphore->wait();
+
+    bool can_traverse;
+    if (agent_r > 0.0f) {
+        can_traverse = can_travel_directly_with_cylinder(start_grid, end_grid, agent_r, space_rid);
+    }
+    else {
+        can_traverse = can_travel_directly_with_ray(start_grid, end_grid, space_rid);
+    }
+
+    if (can_traverse) {
+        exist_path.clear();
+        exist_path.append(start_grid);
+        exist_path.append(end_grid);
+        end_time_u = Time::get_singleton()->get_ticks_usec();
+        end_time_m = Time::get_singleton()->get_ticks_msec();
+
+        if (end_time_m - begin_time_m < 1) {
+            // If the millisecond timing is less than 1 millisecond, use microsecond output
+            // 如果毫秒计时小于1毫秒，使用微秒输出
+            UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
+        }
+        else {
+            // Otherwise use milliseconds output
+            // 否则使用毫秒输出
+            UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
+        }
+    }
+    else {
+        // get raw path
+        find_raw_path(start, end, agent_r);
+        if (exist_path.is_empty()) {
+            UtilityFunctions::print("Path finding failed!");
+            is_PF_thread_active = false;
+            PF_thread_timeout_timer->stop();
+            call_deferred("emit_signal", "pathfinding_failed", "No path found");
+            return;
+        }
+
+        end_time_u = Time::get_singleton()->get_ticks_usec();
+        end_time_m = Time::get_singleton()->get_ticks_msec();
+
+        if (end_time_m - begin_time_m < 1) {
+            // If the millisecond timing is less than 1 millisecond, use microsecond output
+            // 如果毫秒计时小于1毫秒，使用微秒输出
+            UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
+        }
+        else {
+            // Otherwise use milliseconds output
+            // 否则使用毫秒输出
+            UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
+        }
+
+        // smooth path
+        if (is_smooth) {
+            begin_time_u = Time::get_singleton()->get_ticks_usec();
+            begin_time_m = Time::get_singleton()->get_ticks_msec();
+
+            smooth_path_string_pulling_fast_v2(agent_r, space_rid);
+
+            end_time_u = Time::get_singleton()->get_ticks_usec();
+            end_time_m = Time::get_singleton()->get_ticks_msec();
+
+            if (end_time_m - begin_time_m < 1) {
+                // If the millisecond timing is less than 1 millisecond, use microsecond output
+                // 如果毫秒计时小于1毫秒，使用微秒输出
+                UtilityFunctions::print(vformat("Smooth path took %d microseconds", end_time_u - begin_time_u));
+            }
+            else {
+                // Otherwise use milliseconds output
+                // 否则使用毫秒输出
+                UtilityFunctions::print(vformat("Smooth path took %d milliseconds", end_time_m - begin_time_m));
+            }
+        }
+    }
+
+    // debug rendering
+    if (debug_mode) call_deferred("init_debug_path", agent_r * debug_path_scale);
+
+    // return with array
+    path_result.clear();
+    for (const Vector3& point : exist_path) {
+        path_result.append(gridToWorld(point));
+    }
+
+    call_deferred("_on_PF_thread_completed");
+}
+
+/**
+ * A* pathfinding multi thread.
+ *
+ * @param start: The path start position(world).
+ * @param end: The path end position(world).
+ * @param agent_r: The radius of nav agent.
+ * @param is_smooth: Whether show smoothed path.
+ */
+void SvoNavmesh::find_path_multi_thread(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+    // 
+    if (is_PF_thread_active) {
+        UtilityFunctions::print("Pathfinding already in progress");
+        return;
+    }
+
+    is_PF_thread_active = true;
+    PF_thread_timeout_timer->start();
+
+    auto call = callable_mp(this, &SvoNavmesh::find_path_v2).bind(start, end, agent_r, false);
+    Error err = path_finding_thread->start(call);
+    if (err != OK) {
+        UtilityFunctions::print("Failed to start thread");
+        is_PF_thread_active = false;
+        PF_thread_timeout_timer->stop();
+    }
+    path_finding_thread->wait_to_finish();
+    //WorkerThreadPool::get_singleton()->add_task(call);
+}
+
+void SvoNavmesh::_on_PF_thread_completed() {
+    is_PF_thread_active = false;
+    PF_thread_timeout_timer->stop();
+    emit_signal("pathfinding_completed", path_result);
+}
+
+/**
+ path finding thread timeout callback.
+ */
+void SvoNavmesh::_on_PF_thread_timeout() {
+    if (is_PF_thread_active) {
+        UtilityFunctions::print("Pathfinding timed out");
+        is_PF_thread_active = false;
+        emit_signal("pathfinding_failed", "Pathfinding timed out");
+    }
+}
+
+void SvoNavmesh::_on_space_state_requested() {
+    space_rid = this->get_world_3d()->get_space();
+    space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    //physics_semaphore->post();
 }

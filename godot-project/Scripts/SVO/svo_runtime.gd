@@ -1,12 +1,16 @@
 extends SvoNavmesh
 	
 func _ready():
+	self.call_deferred("_on_scene_ready")
+
+func _on_scene_ready():
 	if self is SvoNavmesh and self.is_visible_in_tree():
 		self.clear_svo(false)
 		self.refresh_svo()
 		if not Engine.is_editor_hint():
-			self.rebuild_svo()
-	
+			self.manual_init()
+			self.rebuild_svo_multi_thread()
+		
 func _input(event):
 	# Receives key input
 	if event is InputEventKey and event.pressed:

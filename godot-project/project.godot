@@ -33,6 +33,7 @@ limits/multithreaded_server/rid_pool_prealloc=120
 
 [physics]
 
+3d/run_on_separate_thread=true
 3d/default_gravity_vector=Vector3(0, 0, 0)
 
 [rendering]

@@ -1,32 +1,40 @@
 #ifndef SVO_NAVMESH_H
 #define SVO_NAVMESH_H
 
+// variant & container
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/variant/vector3.hpp>
+#include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 
+// shape
 #include <godot_cpp/classes/physics_body3d.hpp>
 #include <godot_cpp/classes/collision_shape3d.hpp>
 #include <godot_cpp/classes/box_shape3d.hpp>
-#include <godot_cpp/classes/box_mesh.hpp>
 #include <godot_cpp/classes/cylinder_shape3d.hpp>
 #include <godot_cpp/classes/cylinder_mesh.hpp>
 #include <godot_cpp/classes/sphere_mesh.hpp>
-#include <godot_cpp/variant/transform3d.hpp>
-#include <godot_cpp/classes/shape3d.hpp>
-#include <godot_cpp/classes/array_mesh.hpp>
-#include <godot_cpp/classes/physics_server3d.hpp>
-#include <godot_cpp/classes/shape_cast3d.hpp>
+
+// physics
 #include <godot_cpp/classes/physics_direct_space_state3d.hpp>
 #include <godot_cpp/classes/physics_point_query_parameters3d.hpp>
 #include <godot_cpp/classes/physics_ray_query_parameters3d.hpp>
 #include <godot_cpp/classes/physics_shape_query_parameters3d.hpp>
 #include <godot_cpp/classes/world3d.hpp>
 
+// Material
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
+
+// Multi thread
+#include <godot_cpp/classes/mutex.hpp>
+#include <godot_cpp/classes/semaphore.hpp>
+#include <godot_cpp/classes/thread.hpp>
+#include <godot_cpp/classes/worker_thread_pool.hpp>
+#include <godot_cpp/classes/timer.hpp>
+#include <godot_cpp/core/binder_common.hpp>
 
 #include "svo_structure.h"
 #include "Test/test_svo.h"
@@ -52,6 +60,9 @@ namespace godot {
         float minVoxelSize;     // size of the smallest cube
         double testdouble;
         int collision_layer;    // Manual sync required
+        Vector3 global_rotation;
+        RID space_rid;
+        PhysicsDirectSpaceState3D* space_state;
 
         // <debug draw>
         bool debug_mode;
@@ -103,13 +114,30 @@ namespace godot {
         // path finding
         void find_raw_path(const Vector3 start, const Vector3 end, float agent_r);
 
+        // multi thread exp
+        Mutex* physics_mutex;
+        Semaphore* physics_semaphore;
+        Thread* path_finding_thread;
+        Thread* build_svo_thread;
+        bool is_PF_thread_active;
+        Timer* PF_thread_timeout_timer;
+        void _on_PF_thread_completed();
+        void _on_PF_thread_timeout();
+        void _on_space_state_requested();
+        void rebuild_svo_multi_thread();
+        void build_svo_v2();
+        void _on_build_thread_completed();
+        void _on_collect_collision_shapes_requested(Node* parent_node);
+        void _on_late_build_requested();
+        void _process_physics_tasks();
+
         // tools
         Vector3 worldToGrid(Vector3 world_position);
         Vector3 gridToWorld(Vector3 grid_position);
         bool check_point_inside_mesh(Vector3 point, RID& space_rid);
         bool check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size, RID& space_rid);
         bool is_box_fully_inside_mesh(Vector3 position, float size, RID& space_rid);
-        void collect_collision_shapes(Node* node, RID &space_rid);
+        void collect_collision_shapes(Node* node);
         void traverse_svo_space_and_insert(OctreeNode* node, int depth, RID& space_rid);
         bool can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid);
         bool can_travel_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid);
@@ -143,7 +171,7 @@ namespace godot {
         void rebuild_svo();
         void refresh_svo();
         void clear_svo(bool clear_setting);
-        void insert_svo_based_on_collision_shapes();
+        void build_svo();
 
         // bind test
         void set_info(float p_info);
@@ -164,6 +192,8 @@ namespace godot {
         void _physics_process(double delta);
         void _enter_tree();
         void _exit_tree();
+
+        void manual_init();
     };
 
 }
