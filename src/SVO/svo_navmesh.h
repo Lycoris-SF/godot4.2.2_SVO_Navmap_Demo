@@ -1,32 +1,40 @@
 #ifndef SVO_NAVMESH_H
 #define SVO_NAVMESH_H
 
+// variant & container
 #include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/variant/vector3.hpp>
+#include <godot_cpp/variant/transform3d.hpp>
 #include <godot_cpp/templates/vector.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
 
+// shape
 #include <godot_cpp/classes/physics_body3d.hpp>
 #include <godot_cpp/classes/collision_shape3d.hpp>
 #include <godot_cpp/classes/box_shape3d.hpp>
-#include <godot_cpp/classes/box_mesh.hpp>
 #include <godot_cpp/classes/cylinder_shape3d.hpp>
 #include <godot_cpp/classes/cylinder_mesh.hpp>
 #include <godot_cpp/classes/sphere_mesh.hpp>
-#include <godot_cpp/variant/transform3d.hpp>
-#include <godot_cpp/classes/shape3d.hpp>
-#include <godot_cpp/classes/array_mesh.hpp>
-#include <godot_cpp/classes/physics_server3d.hpp>
-#include <godot_cpp/classes/shape_cast3d.hpp>
+
+// physics
 #include <godot_cpp/classes/physics_direct_space_state3d.hpp>
 #include <godot_cpp/classes/physics_point_query_parameters3d.hpp>
 #include <godot_cpp/classes/physics_ray_query_parameters3d.hpp>
 #include <godot_cpp/classes/physics_shape_query_parameters3d.hpp>
 #include <godot_cpp/classes/world3d.hpp>
 
+// Material
 #include <godot_cpp/classes/standard_material3d.hpp>
 #include <godot_cpp/classes/shader_material.hpp>
+
+/*// Multi thread
+#include <godot_cpp/classes/mutex.hpp>
+#include <godot_cpp/classes/semaphore.hpp>
+#include <godot_cpp/classes/thread.hpp>
+#include <godot_cpp/classes/worker_thread_pool.hpp>
+#include <godot_cpp/classes/timer.hpp>
+#include <godot_cpp/core/binder_common.hpp>*/
 
 #include "svo_structure.h"
 #include "Test/test_svo.h"
@@ -101,7 +109,7 @@ namespace godot {
         // </neighbors>
 
         // path finding
-        void find_raw_path(const Vector3 start, const Vector3 end, float agent_r);
+        bool find_raw_path(Vector3 start, Vector3 end, float agent_r);
 
         // tools
         Vector3 worldToGrid(Vector3 world_position);
@@ -111,12 +119,12 @@ namespace godot {
         bool is_box_fully_inside_mesh(Vector3 position, float size, RID& space_rid);
         void collect_collision_shapes(Node* node, RID &space_rid);
         void traverse_svo_space_and_insert(OctreeNode* node, int depth, RID& space_rid);
-        bool can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid);
-        bool can_travel_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid);
-        void smooth_path_string_pulling_fast(float agent_radius, RID& space_rid);
-        void smooth_path_string_pulling_fast_v2(float agent_radius, RID& space_rid);
-        void smooth_path_string_pulling_full(float agent_radius, RID& space_rid);
-        void smooth_path_string_pulling_full_v2(float agent_radius, RID& space_rid);
+        bool can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius);
+        bool can_travel_directly_with_ray(const Vector3& from, const Vector3& to);
+        void smooth_path_string_pulling_fast(float agent_radius);
+        void smooth_path_string_pulling_fast_v2(float agent_radius);
+        void smooth_path_string_pulling_full(float agent_radius);
+        void smooth_path_string_pulling_full_v2(float agent_radius);
         Vector<Vector3> subdivide_path(Vector3 start, Vector3 end, float segment_length);
 
     protected:
@@ -155,8 +163,10 @@ namespace godot {
         // v1
         Array find_path_v1(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth = true);
         // v2
+        bool direct_path_check(const Vector3 start, const Vector3 end, float agent_r);
         void find_path_v2(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth = true);
         void find_path_multi_thread(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth = true);
+        void transfer_path_result();
 
         // override
         void _ready();

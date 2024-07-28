@@ -1,24 +1,43 @@
 extends RigidBody3D
 
+signal A_star_completed
+signal Path_found
+
+# thread(only one in background)
 var thread: Thread
+var is_smooth
+var is_physics_task_set = false
+
+# Microbenchmarking 
+var begin_time_u
+var begin_time_m
+var end_time_u
+var end_time_m
+
+# steering
 var agent_r_temp = 0.125
 var svo : SvoNavmesh
 var path = []
 var current_target_index = 0
 var close_enough_radius = 0.125/2
 var max_speed = 0.35
-var arrival_threshold = 0.125*7  # 减速开始的距离阈值
-var max_acceleration = 9.81 * 0.7  # 最大加速度, 3G
-var max_deceleration = 9.81 * 0.5  # 最大减速度, 1G
+var arrival_threshold = 0.125*7  # Distance threshold for deceleration to start
+var max_acceleration = 9.81 * 0.7  # Maximum acceleration, 3G
+var max_deceleration = 9.81 * 0.5  # Maximum deceleration, 1G
 
 func _ready():
-	#thread = Thread.new()
+	thread = Thread.new()
 	# temp solution, replace with mamager when ready for games
 	svo = $"../spider exp project/SvoNavmesh"
+	A_star_completed.connect(_on_A_star_completed)
+	Path_found.connect(_on_path_found)
+		
+func _physics_process(delta):
+	if is_physics_task_set:
+		PF_physics_task()
 			
 func _exit_tree():
-	#thread.wait_to_finish()
-	pass
+	thread.wait_to_finish()
 
 func _integrate_forces(state):
 	if path.size() > 0 and current_target_index < path.size():
@@ -68,14 +87,13 @@ func _input(event):
 			current_target_index = 0
 			path = svo.find_path(self.position, rand_empty_in_svo, agent_r_temp, true)
 		if event.keycode == KEY_M:
-			var rand_empty_in_svo = _find_rand_empty_pos()
-			var rand_empty2_in_svo = _find_rand_empty_pos()
-			var data = [rand_empty_in_svo, rand_empty2_in_svo, agent_r_temp]
-			thread.start(_threaded_pathfinding.bind(data))
+			find_path_multi_thread()
 
-func _threaded_pathfinding(userdata):
-	var is_smooth = true
-	svo.find_path_multi_thread(userdata[0], userdata[1], userdata[2], is_smooth)
+func record_time(string):
+	if end_time_m - begin_time_m < 1:
+		print(string, end_time_u - begin_time_u, " microseconds")
+	else:
+		print(string, end_time_m - begin_time_m, " milliseconds")
 
 func _find_rand_empty_pos():
 	var root_size = svo.rootVoxelSize
@@ -98,3 +116,67 @@ func _find_rand_empty_pos():
 		
 	print("Failed to find an empty position after", max_attempts, "attempts.")
 	return null
+
+func find_path_multi_thread():
+	is_smooth = true
+	current_target_index = 0
+	path.clear()
+	var rand_empty_in_svo = _find_rand_empty_pos()
+	var data = [self.position, rand_empty_in_svo, agent_r_temp]
+	var direct_path = svo.direct_path_check(self.position, rand_empty_in_svo, agent_r_temp)
+	if not direct_path:
+		thread.start(A_star.bind(data))
+	else:
+		emit_signal("Path_found")
+		
+func A_star(data):
+	begin_time_u = Time.get_ticks_usec()
+	begin_time_m = Time.get_ticks_msec()
+
+	if not svo.find_raw_path(data[0],data[1],data[2]):
+		print("Path finding failed!")
+		call_deferred("emit_signal", "A_star_completed")
+		return false
+	else:
+		call_deferred("emit_signal", "A_star_completed")
+		end_time_u = Time.get_ticks_usec()
+		end_time_m = Time.get_ticks_msec()
+		record_time("Path finding took: ")
+		return true
+
+func _on_A_star_completed():
+	var result = thread.wait_to_finish()
+	is_physics_task_set = result and is_smooth
+	if result and not is_physics_task_set:
+		svo.transfer_path_result()
+		init_debug_path()
+
+func PF_physics_task():
+	begin_time_u = Time.get_ticks_usec()
+	begin_time_m = Time.get_ticks_msec()
+	
+	svo.smooth_path_string_pulling_fast_v2(agent_r_temp)
+	svo.transfer_path_result()
+	
+	end_time_u = Time.get_ticks_usec()
+	end_time_m = Time.get_ticks_msec()
+	record_time("Smooth path took: ")
+	
+	is_physics_task_set = false
+	call_deferred("init_debug_path")
+	
+func init_debug_path():
+	if svo.debug_mode:
+		begin_time_u = Time.get_ticks_usec()
+		begin_time_m = Time.get_ticks_msec()
+		
+		svo.init_debug_path(agent_r_temp*svo.debug_path_scale)
+		
+		end_time_u = Time.get_ticks_usec()
+		end_time_m = Time.get_ticks_msec()
+		record_time("Init rendering took: ")
+		
+	emit_signal("Path_found")
+		
+func _on_path_found():
+	path = svo.get_last_path_result()

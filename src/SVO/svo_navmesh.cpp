@@ -69,9 +69,12 @@ void SvoNavmesh::_bind_methods() {
     // path finding
     ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v1);
     // path finding multi thread
-    ClassDB::bind_method(D_METHOD("find_path_v2", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v2);
-    ClassDB::bind_method(D_METHOD("find_path_multi_thread", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_multi_thread);
+    ClassDB::bind_method(D_METHOD("direct_path_check", "start", "end", "agent_r"), &SvoNavmesh::direct_path_check);
     ClassDB::bind_method(D_METHOD("get_last_path_result"), &SvoNavmesh::get_last_path_result);
+    ClassDB::bind_method(D_METHOD("find_raw_path", "start", "end", "agent_r"), &SvoNavmesh::find_raw_path);
+    ClassDB::bind_method(D_METHOD("smooth_path_string_pulling_fast_v2", "agent_r"), &SvoNavmesh::smooth_path_string_pulling_fast_v2);
+    ClassDB::bind_method(D_METHOD("init_debug_path", "agent_r"), &SvoNavmesh::init_debug_path);
+    ClassDB::bind_method(D_METHOD("transfer_path_result"), &SvoNavmesh::transfer_path_result);
 }
 
 SvoNavmesh::SvoNavmesh(): 
@@ -1094,10 +1097,10 @@ Vector<OctreeNode*> get_neighbors(OctreeNode* node, float agent_r) {
 /**
  check if a direct path (with radius) between two points is feasible
  */
-bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius, RID& space_rid) {
+bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
-    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(this->get_world_3d()->get_space());
     if (!space_state) {
         ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
         return false;
@@ -1190,10 +1193,10 @@ bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Ve
 /**
  check if a direct path (no radius) between two points is feasible
  */
-bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3& to, RID& space_rid) {
+bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3& to) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
-    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(this->get_world_3d()->get_space());
     if (!space_state) {
         ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
         return false;
@@ -1232,7 +1235,7 @@ float calculateSegmentLength(float rootVoxelSize, float minVoxelSize) {
 /**
  fast smooth_path (though not lot faster)
  */
-void SvoNavmesh::smooth_path_string_pulling_fast(float agent_radius, RID& space_rid) {
+void SvoNavmesh::smooth_path_string_pulling_fast(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1246,10 +1249,10 @@ void SvoNavmesh::smooth_path_string_pulling_fast(float agent_radius, RID& space_
         while (j < exist_path.size()) {
             bool can_traverse;
             if (agent_radius > 0.0f) {
-                can_traverse = can_travel_directly_with_cylinder(exist_path[i], exist_path[j], agent_radius, space_rid);
+                can_traverse = can_travel_directly_with_cylinder(exist_path[i], exist_path[j], agent_radius);
             }
             else {
-                can_traverse = can_travel_directly_with_ray(exist_path[i], exist_path[j], space_rid);
+                can_traverse = can_travel_directly_with_ray(exist_path[i], exist_path[j]);
             }
 
             if (!can_traverse) {
@@ -1272,7 +1275,7 @@ void SvoNavmesh::smooth_path_string_pulling_fast(float agent_radius, RID& space_
 /**
  fast smooth_path (with subdivide path)
  */
-void SvoNavmesh::smooth_path_string_pulling_fast_v2(float agent_radius, RID& space_rid) {
+void SvoNavmesh::smooth_path_string_pulling_fast_v2(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1301,10 +1304,10 @@ void SvoNavmesh::smooth_path_string_pulling_fast_v2(float agent_radius, RID& spa
         while (j < subdivided_path.size()) {
             bool can_traverse;
             if (agent_radius > 0.0f) {
-                can_traverse = can_travel_directly_with_cylinder(subdivided_path[i], subdivided_path[j], agent_radius, space_rid);
+                can_traverse = can_travel_directly_with_cylinder(subdivided_path[i], subdivided_path[j], agent_radius);
             }
             else {
-                can_traverse = can_travel_directly_with_ray(subdivided_path[i], subdivided_path[j], space_rid);
+                can_traverse = can_travel_directly_with_ray(subdivided_path[i], subdivided_path[j]);
             }
 
             if (!can_traverse) {
@@ -1327,7 +1330,7 @@ void SvoNavmesh::smooth_path_string_pulling_fast_v2(float agent_radius, RID& spa
 /**
  better smooth_path
  */
-void SvoNavmesh::smooth_path_string_pulling_full(float agent_radius, RID& space_rid) {
+void SvoNavmesh::smooth_path_string_pulling_full(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1341,10 +1344,10 @@ void SvoNavmesh::smooth_path_string_pulling_full(float agent_radius, RID& space_
         for (int j = i + 1; j < exist_path.size(); ++j) {
             bool can_traverse;
             if (agent_radius > 0.0f) {
-                can_traverse = can_travel_directly_with_cylinder(exist_path[i], exist_path[j], agent_radius, space_rid);
+                can_traverse = can_travel_directly_with_cylinder(exist_path[i], exist_path[j], agent_radius);
             }
             else {
-                can_traverse = can_travel_directly_with_ray(exist_path[i], exist_path[j], space_rid);
+                can_traverse = can_travel_directly_with_ray(exist_path[i], exist_path[j]);
             }
 
             if (can_traverse) {
@@ -1362,7 +1365,7 @@ void SvoNavmesh::smooth_path_string_pulling_full(float agent_radius, RID& space_
 /**
  better smooth_path (with subdivide path)
  */
-void SvoNavmesh::smooth_path_string_pulling_full_v2(float agent_radius, RID& space_rid) {
+void SvoNavmesh::smooth_path_string_pulling_full_v2(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1391,10 +1394,10 @@ void SvoNavmesh::smooth_path_string_pulling_full_v2(float agent_radius, RID& spa
         for (int j = i + 1; j < subdivided_path.size(); ++j) {
             bool can_traverse;
             if (agent_radius > 0.0f) {
-                can_traverse = can_travel_directly_with_cylinder(subdivided_path[i], subdivided_path[j], agent_radius, space_rid);
+                can_traverse = can_travel_directly_with_cylinder(subdivided_path[i], subdivided_path[j], agent_radius);
             }
             else {
-                can_traverse = can_travel_directly_with_ray(subdivided_path[i], subdivided_path[j], space_rid);
+                can_traverse = can_travel_directly_with_ray(subdivided_path[i], subdivided_path[j]);
             }
 
             if (can_traverse) {
@@ -1431,7 +1434,7 @@ Vector<Vector3> SvoNavmesh::subdivide_path(Vector3 start, Vector3 end, float seg
 }
 
 /**
- * A* pathfinding.
+ * A* pathfinding Prototype.
  *
  * @param start: The path start position(world).
  * @param end: The path end position(world).
@@ -1457,10 +1460,10 @@ Array SvoNavmesh::find_path_v1(const Vector3 start, const Vector3 end, float age
     RID space_rid = this->get_world_3d()->get_space();
     bool can_traverse;
     if (agent_r > 0.0f) {
-        can_traverse = can_travel_directly_with_cylinder(start_grid, end_grid, agent_r, space_rid);
+        can_traverse = can_travel_directly_with_cylinder(start_grid, end_grid, agent_r);
     }
     else {
-        can_traverse = can_travel_directly_with_ray(start_grid, end_grid, space_rid);
+        can_traverse = can_travel_directly_with_ray(start_grid, end_grid);
     }
 
     if (can_traverse) {
@@ -1508,7 +1511,7 @@ Array SvoNavmesh::find_path_v1(const Vector3 start, const Vector3 end, float age
             begin_time_u = Time::get_singleton()->get_ticks_usec();
             begin_time_m = Time::get_singleton()->get_ticks_msec();
 
-            smooth_path_string_pulling_fast_v2(agent_r, space_rid);
+            smooth_path_string_pulling_fast_v2(agent_r);
 
             end_time_u = Time::get_singleton()->get_ticks_usec();
             end_time_m = Time::get_singleton()->get_ticks_msec();
@@ -1538,6 +1541,47 @@ Array SvoNavmesh::find_path_v1(const Vector3 start, const Vector3 end, float age
 }
 
 /**
+ check if there is a straight line between a path
+ */
+bool SvoNavmesh::direct_path_check(const Vector3 start, const Vector3 end, float agent_r) {
+    // both points need to be in empty
+    // TODO: change this when ready for game
+    if (query_voxel(start) || query_voxel(end)) {
+        UtilityFunctions::print("Point inside SOLID!");
+        return false;
+    }
+
+    // check direct path
+    Vector3 start_grid = worldToGrid(start);
+    Vector3 end_grid = worldToGrid(end);
+    bool can_traverse;
+    if (agent_r > 0.0f) {
+        can_traverse = can_travel_directly_with_cylinder(start_grid, end_grid, agent_r);
+    }
+    else {
+        can_traverse = can_travel_directly_with_ray(start_grid, end_grid);
+    }
+
+    if (can_traverse) {
+        exist_path.clear();
+        exist_path.append(start_grid);
+        exist_path.append(end_grid);
+
+        // debug rendering
+        if (debug_mode) init_debug_path(agent_r * debug_path_scale);
+
+        // return with array
+        path_result.clear();
+        for (const Vector3& point : exist_path) {
+            path_result.append(gridToWorld(point));
+        }
+    }
+
+    return can_traverse;
+}
+
+//已弃用; Abandoned; This is now completed with GD_script in Engine
+/**
  * A* pathfinding void.
  *
  * @param start: The path start position(world).
@@ -1561,13 +1605,12 @@ void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agen
     // check direct path
     Vector3 start_grid = worldToGrid(start);
     Vector3 end_grid = worldToGrid(end);
-    RID space_rid = this->get_world_3d()->get_space();
     bool can_traverse;
     if (agent_r > 0.0f) {
-        can_traverse = can_travel_directly_with_cylinder(start_grid, end_grid, agent_r, space_rid);
+        can_traverse = can_travel_directly_with_cylinder(start_grid, end_grid, agent_r);
     }
     else {
-        can_traverse = can_travel_directly_with_ray(start_grid, end_grid, space_rid);
+        can_traverse = can_travel_directly_with_ray(start_grid, end_grid);
     }
 
     if (can_traverse) {
@@ -1615,7 +1658,7 @@ void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agen
             begin_time_u = Time::get_singleton()->get_ticks_usec();
             begin_time_m = Time::get_singleton()->get_ticks_msec();
 
-            smooth_path_string_pulling_fast_v2(agent_r, space_rid);
+            smooth_path_string_pulling_fast_v2(agent_r);
 
             end_time_u = Time::get_singleton()->get_ticks_usec();
             end_time_m = Time::get_singleton()->get_ticks_msec();
@@ -1636,7 +1679,11 @@ void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agen
     // debug rendering
     if (debug_mode) init_debug_path(agent_r * debug_path_scale);
 
-    // return with array
+    transfer_path_result();
+}
+
+void SvoNavmesh::transfer_path_result() {
+    // transfer with array
     path_result.clear();
     for (const Vector3& point : exist_path) {
         path_result.append(gridToWorld(point));
@@ -1652,15 +1699,14 @@ void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agen
  * @param is_smooth: Whether show smoothed path.
  */
 void SvoNavmesh::find_path_multi_thread(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
-    // this one will just crash
-    call_deferred("find_path_v2", start, end, agent_r);
+    UtilityFunctions::print("find_path_multi_thread is now completed with GD_Script in Engine");
 }
 
 /**
  init MeshInstance3D for path finding.
  For static debug draw only.
  */
-void SvoNavmesh::init_debug_path(float agent_r) {
+/*void SvoNavmesh::init_debug_path_v1(float agent_r) {
     // Clear old debug children
     // 清除旧的调试对象
     for (int i = 0; i < path_pool.size(); ++i) {
@@ -1739,18 +1785,83 @@ void SvoNavmesh::init_debug_path(float agent_r) {
             float angle = acos(up.dot(direction));
             // 设置圆柱体的变换
             Transform3D transform;
-
-            if (angle != 0) {
-                // 创建四元数
-                Quaternion rotation(rotation_axis, angle);
-                transform.basis = Basis(rotation);
-            }
+            // 创建四元数
+            Quaternion rotation(rotation_axis, angle);
+            
+            transform.basis = Basis(rotation);
             transform.origin = (exist_path[i] + exist_path[i + 1]) * 0.5;
             transform.basis.scale_local(Vector3(1, distance, 1)); // 圆柱体的缩放
 
             cylinder->set_transform(transform);
             add_child(cylinder);
             path_pool.push_back(cylinder);
+        }
+    }
+}*/
+void SvoNavmesh::init_debug_path(float agent_r) {
+    // Clear old debug children
+    for (int i = 0; i < path_pool.size(); ++i) {
+        remove_child(path_pool[i]);
+        memdelete(path_pool[i]);
+    }
+    path_pool.clear();
+
+    Ref<SphereMesh> sphereMesh = memnew(SphereMesh);
+    sphereMesh->set_radius(MAX(agent_r, 0.02f));
+    sphereMesh->set_height(MAX(agent_r, 0.02f) * 2.0f);
+
+    Ref<CylinderMesh> cylinderMesh = memnew(CylinderMesh);
+    cylinderMesh->set_bottom_radius(MAX(agent_r / 2.0f, 0.01f));
+    cylinderMesh->set_top_radius(MAX(agent_r / 2.0f, 0.01f));
+    cylinderMesh->set_height(1.0f);  // Default height, will be scaled
+
+    for (int i = 0; i < exist_path.size(); ++i) {
+        MeshInstance3D* sphere = memnew(MeshInstance3D);
+        sphere->set_mesh(sphereMesh);
+        sphere->set_material_override(i < exist_path.size() - 1 ? debugPathMaterialY : debugPathMaterialR);
+        sphere->set_transform(Transform3D(Basis(), exist_path[i]));
+        add_child(sphere);
+        path_pool.push_back(sphere);
+
+        // If it is not the last point, create a cylinder connecting to the next point
+        // 如果不是最后一个点，创建圆柱体连接到下一个点
+        if (i < exist_path.size() - 1) {
+            MeshInstance3D* cylinder = memnew(MeshInstance3D);
+            cylinder->set_mesh(cylinderMesh);
+            cylinder->set_material_override(debugPathMaterialB);
+
+            Vector3 direction = (exist_path[i + 1] - exist_path[i]);
+            if (!direction.is_zero_approx()) {
+                direction = direction.normalized();
+                Vector3 up(0, 1, 0);
+                Vector3 rotation_axis = up.cross(direction);
+                if (!rotation_axis.is_zero_approx()) {
+                    rotation_axis = rotation_axis.normalized();
+                    float angle = acos(CLAMP(up.dot(direction), -1.0f, 1.0f));
+
+                    Quaternion rotation(rotation_axis, angle);
+                    Transform3D transform(rotation, (exist_path[i] + exist_path[i + 1]) * 0.5);
+                    transform.basis.scale_local(Vector3(1, (exist_path[i + 1] - exist_path[i]).length(), 1));
+
+                    cylinder->set_transform(transform);
+                    add_child(cylinder);
+                    path_pool.push_back(cylinder);
+                }
+                else {
+                    // Fallback transform when rotation axis is invalid
+                    Transform3D fallback_transform;
+                    fallback_transform.origin = (exist_path[i] + exist_path[i + 1]) * 0.5;
+                    fallback_transform.basis.scale_local(Vector3(1, (exist_path[i + 1] - exist_path[i]).length(), 1));
+
+                    cylinder->set_transform(fallback_transform);
+                    add_child(cylinder);
+                    path_pool.push_back(cylinder);
+                    WARN_PRINT("Rotation axis is zero or invalid. (Gimbal Lock)");
+                }
+            }
+            else {
+                WARN_PRINT("Direction is zero or invalid. Skipping cylinder between identical points.");
+            }
         }
     }
 }
@@ -1762,7 +1873,7 @@ void SvoNavmesh::init_debug_path(float agent_r) {
  * @param end: The path end position(world).
  * @param agent_r: The radius of nav agent.
  */
-void SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end, float agent_r) {
+bool SvoNavmesh::find_raw_path(Vector3 start, Vector3 end, float agent_r) {
     Vector<OctreeNode*> open_set;
     Dictionary came_from;
     Dictionary g_score;
@@ -1783,7 +1894,7 @@ void SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end, float age
         if (current == end_node) {
             came_from[end_grid] = end_node->center;  // manual add end
             exist_path = reconstruct_path(came_from, end_grid);
-            return;
+            return true;
         }
 
         open_set.erase(current);
@@ -1816,5 +1927,6 @@ void SvoNavmesh::find_raw_path(const Vector3 start, const Vector3 end, float age
         }
     }
     exist_path = Vector<Vector3>();
-    // Return empty path if no path found
+    // if no path found
+    return false;
 }
