@@ -50,6 +50,12 @@ namespace godot {
     // PhysicsBody3Ds' RID
     static Vector<RID> target_rids;
 
+    enum PhysicsTask {
+        get_space_state,
+        get_collision_shapes,
+        traverse_svo_insert
+    };
+
     class SvoNavmesh : public Node3D {
         GDCLASS(SvoNavmesh, Node3D)
 
@@ -63,6 +69,7 @@ namespace godot {
         Vector3 global_rotation;
         RID space_rid;
         PhysicsDirectSpaceState3D* space_state;
+        bool requiring_space = false;
 
         // <debug draw>
         bool debug_mode;
@@ -131,6 +138,9 @@ namespace godot {
         void _on_late_build_requested();
         void _process_physics_tasks();
 
+        // physics thread task
+        Vector<PhysicsTask> P_task_list;
+
         // tools
         Vector3 worldToGrid(Vector3 world_position);
         Vector3 gridToWorld(Vector3 grid_position);
@@ -154,6 +164,8 @@ namespace godot {
         SvoNavmesh();
         //SvoNavmesh(float size, Vector3 position, Vector3 rotation);
         ~SvoNavmesh();
+
+        void deferred_print(String message, int type);
 
         void insert_voxel(Vector3 position);
         bool query_voxel(Vector3 position);

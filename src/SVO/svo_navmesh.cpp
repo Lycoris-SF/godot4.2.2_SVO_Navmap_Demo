@@ -28,6 +28,7 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("check_voxel_with_id", "id"), &SvoNavmesh::check_voxel_with_id);
     ClassDB::bind_method(D_METHOD("update_voxel", "position", "isSolid"), &SvoNavmesh::update_voxel);
     
+    ClassDB::bind_method(D_METHOD("deferred_print", "message", "type"), &SvoNavmesh::deferred_print);
     ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmesh::get_info);
     ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmesh::set_info);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "testdouble"), "set_info", "get_info");
@@ -217,6 +218,20 @@ uint32_t create_collision_mask(const Vector<int>& layers) {
         mask |= 1 << (layer - 1);
     }
     return mask;
+}
+
+void SvoNavmesh::deferred_print(String message, int type) {
+    switch (type)
+    {
+    case 0:
+        UtilityFunctions::print(message);
+        break;
+    case 1:
+        WARN_PRINT(message);
+        break;
+    default:
+        break;
+    }
 }
 
 /**
@@ -761,57 +776,85 @@ void SvoNavmesh::rebuild_svo_multi_thread() {
     }
     svo->clear();
 
-    call_deferred("_on_space_state_requested");     // a late init
-    call_deferred("_on_late_build_requested");
+    P_task_list.push_back(get_space_state);
+    P_task_list.push_back(get_collision_shapes);
+    P_task_list.push_back(traverse_svo_insert);
 }
 
 /**
  Generate svo from collider multi thread.
  */
 void SvoNavmesh::build_svo_v2() {
-    uint64_t begin = Time::get_singleton()->get_ticks_msec();
-
     Node* parent_node = get_parent();
-
     if (parent_node != nullptr) {
-        call_deferred("_on_collect_collision_shapes_requested", parent_node);
-        physics_semaphore->wait();
+        collect_collision_shapes(parent_node);
+    }
+}
+
+void SvoNavmesh::_on_build_thread_completed() {
+    //build_svo_thread->call_deferred("wait_to_finish");
+    if (debug_mode) init_debug_mesh_v3();
+}
+void SvoNavmesh::_on_collect_collision_shapes_requested(Node *parent_node) {
+    uint64_t begin = Time::get_singleton()->get_ticks_msec();
+    
+    if (parent_node != nullptr) {
+        collect_collision_shapes(parent_node);
     }
     traverse_svo_space_and_insert(svo->root, 1, space_rid);
 
     uint64_t end = Time::get_singleton()->get_ticks_msec();
-    UtilityFunctions::print(vformat("insert svo nodes with %d milliseconds", end - begin));
+    call_deferred("deferred_print", vformat("insert svo nodes with %d milliseconds", end - begin), 0);
 
     begin = Time::get_singleton()->get_ticks_msec();
 
     init_neighbors();
 
     end = Time::get_singleton()->get_ticks_msec();
-    UtilityFunctions::print(vformat("init neighbors with %d milliseconds", end - begin));
+    call_deferred("deferred_print", vformat("init neighbors with %d milliseconds", end - begin), 0);
 
-    call_deferred("_on_build_thread_completed");
-}
-
-void SvoNavmesh::_on_build_thread_completed() {
-    if (debug_mode) init_debug_mesh_v3();
-}
-void SvoNavmesh::_on_collect_collision_shapes_requested(Node *parent_node) {
-    collect_collision_shapes(parent_node);
-    physics_semaphore->post();
+    //physics_semaphore->post();
 }
 
 void SvoNavmesh::_on_late_build_requested() {
     auto call = callable_mp(this, &SvoNavmesh::build_svo_v2);
     Error err = build_svo_thread->start(call);
     if (err != OK) {
-        UtilityFunctions::print("Failed to start thread");
+        call_deferred("deferred_print", "Failed to start thread", 0);
+        return;
     }
     //WorkerThreadPool::get_singleton()->add_task(call);
-    build_svo_thread->wait_to_finish();
+    //build_svo_thread->wait_to_finish();
 }
 
 void SvoNavmesh::_process_physics_tasks() {
-
+    if (P_task_list.is_empty()) {
+        return;
+    }
+    
+    auto task = P_task_list.get(0);
+    switch (task)
+    {
+    case get_space_state:
+        P_task_list.remove_at(0);
+        _on_space_state_requested();
+        break;
+    case get_collision_shapes:
+        P_task_list.remove_at(0);
+        task = P_task_list.get(0);
+        build_svo_v2();
+        if (task != traverse_svo_insert) {
+            break;
+        }
+    case traverse_svo_insert:
+        P_task_list.remove_at(0);
+        traverse_svo_space_and_insert(svo->root, 1, space_rid);
+        init_neighbors();
+        init_debug_mesh_v3();
+        break;
+    default:
+        break;
+    }
 }
 
 SparseVoxelOctree& SvoNavmesh::get_svo() {
@@ -853,6 +896,9 @@ void SvoNavmesh::manual_init() {
     PF_thread_timeout_timer->set_wait_time(10.0); // 10 seconds timeout
     PF_thread_timeout_timer->connect("timeout", callable_mp(this, &SvoNavmesh::_on_PF_thread_timeout));
     add_child(PF_thread_timeout_timer);
+
+    // physics task
+    P_task_list.clear();
 }
 void SvoNavmesh::_process(double delta) {
     if (debug_mode) draw_svo_v3(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
@@ -1994,5 +2040,6 @@ void SvoNavmesh::_on_PF_thread_timeout() {
 void SvoNavmesh::_on_space_state_requested() {
     space_rid = this->get_world_3d()->get_space();
     space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    if (!space_state) P_task_list.insert(0,get_space_state);
     //physics_semaphore->post();
 }
