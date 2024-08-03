@@ -262,6 +262,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\register\register_types.cpp" />
+    <ClCompile Include="src\SVO\svo_connector.cpp" />
     <ClCompile Include="src\SVO\svo_navmesh.cpp" />
     <ClCompile Include="src\SVO\svo_navmesh_manager.cpp" />
     <ClCompile Include="src\SVO\svo_resource.cpp" />
@@ -271,6 +272,7 @@
   <ItemGroup>
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\register\register_types.h" />
+    <ClInclude Include="src\SVO\svo_connector.h" />
     <ClInclude Include="src\SVO\svo_navmesh.h" />
     <ClInclude Include="src\SVO\svo_navmesh_manager.h" />
     <ClInclude Include="src\SVO\svo_resource.h" />

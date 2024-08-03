@@ -49,6 +49,9 @@ namespace godot {
     static Ref<Shader> EmptyMaterial_shader;
     // PhysicsBody3Ds' RID
     static Vector<RID> target_rids;
+    //
+    static int sum_time = 0;
+    static int sum_count = 0;
 
     class SvoNavmesh : public Node3D {
         GDCLASS(SvoNavmesh, Node3D)
@@ -60,6 +63,11 @@ namespace godot {
         float minVoxelSize;     // size of the smallest cube
         double testdouble;
         int collision_layer;    // Manual sync required
+
+        void set_uuid(String p_uuid);
+        String get_uuid() const;
+        void set_adjacent_list(Array data);
+        Array get_adjacent_list() const;
 
         // <debug draw>
         bool debug_mode;
@@ -110,6 +118,7 @@ namespace godot {
 
         // path finding
         bool find_raw_path(Vector3 start, Vector3 end, float agent_r);
+        bool find_raw_path_v2(Vector3 start, Vector3 end, float agent_r);
 
         // tools
         Vector3 worldToGrid(Vector3 world_position);
@@ -134,6 +143,9 @@ namespace godot {
         SvoNavmesh();
         //SvoNavmesh(float size, Vector3 position, Vector3 rotation);
         ~SvoNavmesh();
+
+        String uuid;            // need support from minos-UUID-generator-for-godot
+        Array adjacent_uuids;
 
         void insert_voxel(Vector3 position);
         bool query_voxel(Vector3 position);

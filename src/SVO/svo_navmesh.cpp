@@ -17,7 +17,15 @@ using namespace godot;
 // UtilityFunctions::print("");
 // UtilityFunctions::print(vformat(""));
 
+void Voxel::_bind_methods()
+{
+
+}
 void OctreeNode::_bind_methods()
+{
+
+}
+void SparseVoxelOctree::_bind_methods()
 {
 
 }
@@ -26,9 +34,17 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("query_voxel", "position"), &SvoNavmesh::query_voxel);
     ClassDB::bind_method(D_METHOD("check_voxel_with_id", "id"), &SvoNavmesh::check_voxel_with_id);
     ClassDB::bind_method(D_METHOD("update_voxel", "position", "isSolid"), &SvoNavmesh::update_voxel);
+
     ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmesh::get_info);
     ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmesh::set_info);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "testdouble"), "set_info", "get_info");
+    ClassDB::bind_method(D_METHOD("get_uuid"), &SvoNavmesh::get_uuid);
+    ClassDB::bind_method(D_METHOD("set_uuid", "p_uuid"), &SvoNavmesh::set_uuid);
+    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::STRING, "uuid"), "set_uuid", "get_uuid");
+    ClassDB::bind_method(D_METHOD("get_adjacent_list"), &SvoNavmesh::get_adjacent_list);
+    ClassDB::bind_method(D_METHOD("set_adjacent_list", "data"), &SvoNavmesh::set_adjacent_list);
+    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::ARRAY, "adjacent_uuids", PROPERTY_HINT_ARRAY_TYPE, "String"), "set_adjacent_list", "get_adjacent_list");
+
     ClassDB::bind_method(D_METHOD("get_debug_mode"), &SvoNavmesh::get_debug_mode);
     ClassDB::bind_method(D_METHOD("set_debug_mode", "debug_mode"), &SvoNavmesh::set_debug_mode);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "debug_mode"), "set_debug_mode", "get_debug_mode");
@@ -67,11 +83,11 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("insert_svo_based_on_collision_shapes"), &SvoNavmesh::insert_svo_based_on_collision_shapes);
 
     // path finding
-    ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v1);
+    ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v2);
     // path finding multi thread
     ClassDB::bind_method(D_METHOD("direct_path_check", "start", "end", "agent_r"), &SvoNavmesh::direct_path_check);
     ClassDB::bind_method(D_METHOD("get_last_path_result"), &SvoNavmesh::get_last_path_result);
-    ClassDB::bind_method(D_METHOD("find_raw_path", "start", "end", "agent_r"), &SvoNavmesh::find_raw_path);
+    ClassDB::bind_method(D_METHOD("find_raw_path", "start", "end", "agent_r"), &SvoNavmesh::find_raw_path_v2);
     ClassDB::bind_method(D_METHOD("smooth_path_string_pulling_fast_v2", "agent_r"), &SvoNavmesh::smooth_path_string_pulling_fast_v2);
     ClassDB::bind_method(D_METHOD("init_debug_path", "agent_r"), &SvoNavmesh::init_debug_path);
     ClassDB::bind_method(D_METHOD("transfer_path_result"), &SvoNavmesh::transfer_path_result);
@@ -138,12 +154,12 @@ Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
     // 移除缩放：将旋转矩阵的列向量归一化
     // In fact, the scale of SVO in the engine should not be changed
     // 事实上引擎内SVO的scale是不因该去改变的
-    Vector3 x = global_transform.basis.get_column(0).normalized();
+    /*Vector3 x = global_transform.basis.get_column(0).normalized();
     Vector3 y = global_transform.basis.get_column(1).normalized();
     Vector3 z = global_transform.basis.get_column(2).normalized();
     global_transform.basis.set_column(0, x);
     global_transform.basis.set_column(1, y);
-    global_transform.basis.set_column(2, z);
+    global_transform.basis.set_column(2, z);*/
 
     Vector3 local_position = global_transform.xform_inv(world_position); // Global to local; 全局到局部
     return local_position; // Convert to grid coordinates; 转换到网格坐标
@@ -155,12 +171,12 @@ Vector3 SvoNavmesh::gridToWorld(Vector3 grid_position) {
     // 移除缩放：将旋转矩阵的列向量归一化
     // In fact, the scale of SVO in the engine should not be changed
     // 事实上引擎内SVO的scale是不因该去改变的
-    Vector3 x = global_transform.basis.get_column(0).normalized();
+    /*Vector3 x = global_transform.basis.get_column(0).normalized();
     Vector3 y = global_transform.basis.get_column(1).normalized();
     Vector3 z = global_transform.basis.get_column(2).normalized();
     global_transform.basis.set_column(0, x);
     global_transform.basis.set_column(1, y);
-    global_transform.basis.set_column(2, z);
+    global_transform.basis.set_column(2, z);*/
 
     return global_transform.xform(grid_position);
 }
@@ -718,6 +734,18 @@ void SvoNavmesh::set_info(float p_info) {
 float SvoNavmesh::get_info() {
     return testdouble;
 }
+void SvoNavmesh::set_uuid(String p_uuid) {
+    uuid = p_uuid;
+}
+String SvoNavmesh::get_uuid() const {
+    return uuid;
+}
+void SvoNavmesh::set_adjacent_list(Array data) {
+    adjacent_uuids = data;
+}
+Array SvoNavmesh::get_adjacent_list() const {
+    return adjacent_uuids;
+}
 
 // override
 void SvoNavmesh::_ready() {
@@ -1147,29 +1175,6 @@ bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Ve
     //query_params->set_collide_with_bodies(true);
     //query_params->set_margin(0.1);
 
-    // ABANDON: 
-    bool debug_smooth = false;
-    if (debug_smooth) {
-        // Create Materials for Debugging
-        // 创建用于调试的材料
-        // Should use static ones instead
-        Ref<StandardMaterial3D> material = memnew(StandardMaterial3D);
-        material->set_albedo(Color(0.2, 0.7, 0.2)); // 绿色
-        // 设置圆柱体网格
-        Ref<CylinderMesh> cylinderMesh = memnew(CylinderMesh);
-        cylinderMesh->set_bottom_radius(agent_radius / 2); // 圆柱体半径
-        cylinderMesh->set_top_radius(agent_radius / 2);
-        cylinderMesh->set_height(from_w.distance_to(to_w));
-        MeshInstance3D* cylinder = memnew(MeshInstance3D);
-        cylinder->set_mesh(cylinderMesh);
-        cylinder->set_material_override(material);
-        Transform3D transform_d = transform;
-        transform_d.basis.scale_local(Vector3(1.1, 1, 1.1)); // 圆柱体的缩放
-        cylinder->set_transform(transform_d);
-        add_child(cylinder);
-        path_pool.push_back(cylinder);
-    }
-
     // Execute query
     // 执行点内查询
     Array results = space_state->intersect_shape(query_params, 32);
@@ -1580,9 +1585,9 @@ bool SvoNavmesh::direct_path_check(const Vector3 start, const Vector3 end, float
     return can_traverse;
 }
 
-//已弃用; Abandoned; This is now completed with GD_script in Engine
 /**
- * A* pathfinding void.
+ * A* pathfinding with support for point not reachable.
+ * Nearest node will be the end.
  *
  * @param start: The path start position(world).
  * @param end: The path end position(world).
@@ -1590,10 +1595,8 @@ bool SvoNavmesh::direct_path_check(const Vector3 start, const Vector3 end, float
  * @param is_smooth: Whether show smoothed path.
  */
 void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
-    // both points need to be in empty
-    // TODO: change this when ready for game
-    if (query_voxel(start) || query_voxel(end)) {
-        UtilityFunctions::print("Point inside SOLID!");
+    if (query_voxel(start)) {
+        UtilityFunctions::print("Point start inside SOLID!");
         return;
     }
 
@@ -1633,9 +1636,9 @@ void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agen
     }
     else {
         // get raw path
-        find_raw_path(start, end, agent_r);
+        find_raw_path_v2(start, end, agent_r);
         if (exist_path.is_empty()) {
-            UtilityFunctions::print("Path finding failed!");
+            UtilityFunctions::print("Path should not be empty, check the code to see what's wrong");
             return;
         }
 
@@ -1706,98 +1709,6 @@ void SvoNavmesh::find_path_multi_thread(const Vector3 start, const Vector3 end, 
  init MeshInstance3D for path finding.
  For static debug draw only.
  */
-/*void SvoNavmesh::init_debug_path_v1(float agent_r) {
-    // Clear old debug children
-    // 清除旧的调试对象
-    for (int i = 0; i < path_pool.size(); ++i) {
-        remove_child(path_pool[i]);
-        memdelete(path_pool[i]);
-    }
-    path_pool.clear();
-
-    // SphereMesh for path points
-    // 设置球形网格
-    Ref<SphereMesh> sphereMesh = memnew(SphereMesh);
-    if (agent_r > 0.0f) {
-        sphereMesh->set_radius(agent_r); // 球体半径
-        sphereMesh->set_height(agent_r * 2);
-    }
-    else {
-        sphereMesh->set_radius(0.02); // 球体半径
-        sphereMesh->set_height(0.04);
-    }
-
-    // CylinderMesh for path connecting lines
-    // 设置圆柱体网格
-    Ref<CylinderMesh> cylinderMesh = memnew(CylinderMesh);
-    if (agent_r > 0.0f) {
-        cylinderMesh->set_bottom_radius(agent_r / 2); // 圆柱体半径
-        cylinderMesh->set_top_radius(agent_r / 2);
-    }
-    else {
-        cylinderMesh->set_bottom_radius(0.01); // 圆柱体半径
-        cylinderMesh->set_top_radius(0.01);
-    }
-    cylinderMesh->set_height(1);  // 默认高度，将会被缩放
-
-    // Create path points & path connecting lines
-    // 创建路径点和连接线
-    for (int i = 0; i < exist_path.size(); ++i) {
-        // If it is the last point
-        // 如果是最后一个点
-        if (i == exist_path.size() - 1) {
-            MeshInstance3D* sphere = memnew(MeshInstance3D);
-
-            sphere->set_mesh(sphereMesh);
-            sphere->set_material_override(debugPathMaterialR);
-            sphere->set_transform(Transform3D(Basis(), exist_path[i]));
-
-            add_child(sphere);
-            path_pool.push_back(sphere);
-            break;
-        }
-        MeshInstance3D* sphere = memnew(MeshInstance3D);
-
-        sphere->set_mesh(sphereMesh);
-        sphere->set_material_override(debugPathMaterialY);
-        sphere->set_transform(Transform3D(Basis(), exist_path[i]));
-
-        add_child(sphere);
-        path_pool.push_back(sphere);
-
-        // If it is not the last point, create a cylinder connecting to the next point
-        // 如果不是最后一个点，创建圆柱体连接到下一个点
-        if (i < exist_path.size() - 1) {
-            MeshInstance3D* cylinder = memnew(MeshInstance3D);
-
-            cylinder->set_mesh(cylinderMesh);
-            cylinder->set_material_override(debugPathMaterialB);
-
-            // Place a cylinder between two waypoints
-            // 在两个路径点之间放置一个圆柱体
-            Vector3 direction = (exist_path[i + 1] - exist_path[i]).normalized();
-            float distance = exist_path[i + 1].distance_to(exist_path[i]);
-            // 默认的向上方向
-            Vector3 up(0, 1, 0);
-            // 计算旋转轴
-            Vector3 rotation_axis = up.cross(direction).normalized();
-            // 计算旋转角度
-            float angle = acos(up.dot(direction));
-            // 设置圆柱体的变换
-            Transform3D transform;
-            // 创建四元数
-            Quaternion rotation(rotation_axis, angle);
-            
-            transform.basis = Basis(rotation);
-            transform.origin = (exist_path[i] + exist_path[i + 1]) * 0.5;
-            transform.basis.scale_local(Vector3(1, distance, 1)); // 圆柱体的缩放
-
-            cylinder->set_transform(transform);
-            add_child(cylinder);
-            path_pool.push_back(cylinder);
-        }
-    }
-}*/
 void SvoNavmesh::init_debug_path(float agent_r) {
     // Clear old debug children
     for (int i = 0; i < path_pool.size(); ++i) {
@@ -1856,7 +1767,7 @@ void SvoNavmesh::init_debug_path(float agent_r) {
                     cylinder->set_transform(fallback_transform);
                     add_child(cylinder);
                     path_pool.push_back(cylinder);
-                    WARN_PRINT("Rotation axis is zero or invalid. (Gimbal Lock)");
+                    //WARN_PRINT("Rotation axis is zero or invalid. (Gimbal Lock)");
                 }
             }
             else {
@@ -1928,5 +1839,80 @@ bool SvoNavmesh::find_raw_path(Vector3 start, Vector3 end, float agent_r) {
     }
     exist_path = Vector<Vector3>();
     // if no path found
+    return false;
+}
+
+/**
+ * A* pathfinding with support for point not reachable.
+ * Nearest node will be the end.
+ *
+ * @param start: The path start position(world).
+ * @param end: The path end position(world).
+ * @param agent_r: The radius of nav agent.
+ */
+bool SvoNavmesh::find_raw_path_v2(Vector3 start, Vector3 end, float agent_r) {
+    Vector<OctreeNode*> open_set;
+    Dictionary came_from;
+    Dictionary g_score;
+    Dictionary f_score;
+
+    Vector3 start_grid = worldToGrid(start);
+    Vector3 end_grid = worldToGrid(end);
+    OctreeNode* start_node = svo->get_deepest_node(start_grid); // Convert world coordinates to SVO grid coordinates
+    OctreeNode* end_node = svo->get_deepest_node(end_grid);
+    OctreeNode* nearest_node = start_node;
+
+    came_from[start_node->center] = start_grid;  // manual add start
+    open_set.push_back(start_node);
+    g_score[start_node->get_instance_id()] = 0;
+    f_score[start_node->get_instance_id()] = heuristic(start_node, end_node);
+    float nearest_distance = end_node->center.distance_to(start_node->center);
+
+    while (!open_set.is_empty()) {
+        OctreeNode* current = get_lowest_f_score_node(open_set, f_score);
+        if (current == end_node) {
+            came_from[end_grid] = end_node->center;  // manual add end
+            exist_path = reconstruct_path(came_from, end_grid);
+            return true;
+        }
+
+        open_set.erase(current);
+        Vector<OctreeNode*> neighbors = get_neighbors(current, agent_r);
+
+        for (int i = 0; i < neighbors.size(); ++i) {
+            OctreeNode* neighbor = neighbors[i];
+
+            // If the neighbor is not in g_score, initialize it to a very high value.
+            // This is because in svo, we cannt init g_score for all the OctreeNodes before loops.
+            // std:: is used here, which is not good for godot regulation.
+            // 如果neighbor不在g_score中，将其初始化为非常高的值
+            if (!g_score.has(neighbor->get_instance_id())) {
+                g_score[neighbor->get_instance_id()] = std::numeric_limits<float>::max();  // 使用最大float值初始化
+            }
+
+            //float temp_current = (float)g_score[current];
+            float tentative_g_score = (float)g_score[current->get_instance_id()] + current->center.distance_to(neighbor->center);
+            //float temp_neighbor = (float)g_score[neighbor];
+
+            if (tentative_g_score < (float)g_score[neighbor->get_instance_id()]) {
+                came_from[neighbor->center] = current->center;
+                g_score[neighbor->get_instance_id()] = tentative_g_score;
+                f_score[neighbor->get_instance_id()] = tentative_g_score + heuristic(neighbor, end_node);
+
+                if (!open_set.has(neighbor)) {
+                    open_set.push_back(neighbor);
+                    // update nearest
+                    // 更新最近节点
+                    float distance_to_goal = end_node->center.distance_to(neighbor->center);
+                    if (distance_to_goal < nearest_distance) {
+                        nearest_node = neighbor;
+                        nearest_distance = distance_to_goal;
+                    }
+                }
+            }
+        }
+    }
+    // if no path found
+    exist_path = reconstruct_path(came_from, nearest_node->center);
     return false;
 }

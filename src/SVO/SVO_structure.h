@@ -17,7 +17,8 @@ namespace godot {
         VS_LIQUID
     };
 
-    class Voxel {
+    class Voxel : public Node {
+        GDCLASS(Voxel, Node);
     public:
         VoxelState state;
         float size;
@@ -29,6 +30,8 @@ namespace godot {
         String to_string() const;
     private:
         String state_to_string(VoxelState state) const;
+    protected:
+        static void _bind_methods();
     };
 
     class OctreeNode : public Node {
@@ -67,7 +70,8 @@ namespace godot {
         static void _bind_methods();
     };
 
-    class SparseVoxelOctree {
+    class SparseVoxelOctree : public Node {
+        GDCLASS(SparseVoxelOctree, Node);
     public:
         int maxDepth;
         float voxelSize;
@@ -106,6 +110,9 @@ namespace godot {
         void deleteChildren(OctreeNode* node);
         // other tool
         void merge_children(OctreeNode* node);
+
+    protected:
+        static void _bind_methods();
     };
 
 }

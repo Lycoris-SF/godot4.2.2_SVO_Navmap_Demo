@@ -2,21 +2,29 @@
 
 using namespace godot;
 
-SvoNavmeshManager::SvoNavmeshManager() {}
-
-SvoNavmeshManager::~SvoNavmeshManager() {
-    for (SvoNavmesh* navmesh : navmeshes) {
-        // 这里假设navmeshes的生命周期由Godot管理，因此不删除navmesh指针
-    }
+void SvoNavmeshManager::_bind_methods()
+{
+    ClassDB::bind_method(D_METHOD("acquire_navmesh"), &SvoNavmeshManager::acquire_navmesh);
+    ClassDB::bind_method(D_METHOD("tidy_adjacents"), &SvoNavmeshManager::tidy_adjacents);
 }
 
-void SvoNavmeshManager::add_navmesh(SvoNavmesh* navmesh) {
-    navmeshes.push_back(navmesh);
+SvoNavmeshManager::SvoNavmeshManager()
+{
+
+}
+SvoNavmeshManager::~SvoNavmeshManager() {
+    // 由于SvoNavmesh被加入场景树，用SvoNavmeshManager管理可能会造成混乱
+}
+
+void SvoNavmeshManager::acquire_navmesh(SvoNavmesh* navmesh) {
+    navmeshes[navmesh->uuid] = navmesh;
 }
 
 bool SvoNavmeshManager::query(Vector3 position) const {
-    for (SvoNavmesh* navmesh : navmeshes) {
-        if (navmesh->query_voxel(position)) {
+    Array keys = navmeshes.keys();
+    for (int i = 0; i < keys.size(); i++) {
+        SvoNavmesh* navmesh = Object::cast_to<SvoNavmesh>(navmeshes[keys[i]]);
+        if (navmesh && navmesh->query_voxel(position)) {
             return true;
         }
     }
@@ -24,8 +32,10 @@ bool SvoNavmeshManager::query(Vector3 position) const {
 }
 
 SvoNavmesh* SvoNavmeshManager::find_navmesh_containing(Vector3 position) const {
-    for (SvoNavmesh* navmesh : navmeshes) {
-        if (navmesh->query_voxel(position)) {
+    Array keys = navmeshes.keys();
+    for (int i = 0; i < keys.size(); i++) {
+        SvoNavmesh* navmesh = Object::cast_to<SvoNavmesh>(navmeshes[keys[i]]);
+        if (navmesh && navmesh->query_voxel(position)) {
             return navmesh;
         }
     }
@@ -56,4 +66,96 @@ Vector<Vector3> SvoNavmeshManager::find_path(Vector3 start, Vector3 end) const {
     path.push_back(end);
 
     return path;
+}
+
+void SvoNavmeshManager::tidy_adjacents() {
+    auto roots = find_possible_roots();
+    HashSet<String> visited;
+
+    for (int i = 0; i < roots.size(); i++) {
+        String root = roots[i];
+        if (!visited.has(root)) {  // 使用 .has() 方法检查元素是否存在
+            bfs(root, visited);
+        }
+    }
+}
+
+void SvoNavmeshManager::bfs(String start_uuid, HashSet<String>& visited) {
+    std::queue<String> queue;
+    queue.push(start_uuid);
+    visited.insert(start_uuid);
+
+    while (!queue.empty()) {
+        String current_uuid = queue.front();
+        queue.pop();
+
+        // 安全地获取当前 navmesh
+        SvoNavmesh* current_navmesh = Object::cast_to<SvoNavmesh>(navmeshes[current_uuid]);
+        if (!current_navmesh) continue;  // 如果转换失败或navmesh不存在，则跳过
+
+        Array adjacent_uuids = current_navmesh->adjacent_uuids;
+        UtilityFunctions::print("Processing: " + current_uuid);
+        Transform3D current_transform = current_navmesh->get_transform();
+        float voxel_size = current_navmesh->get_voxel_size();
+
+        for (int i = 0; i < adjacent_uuids.size(); i++) {
+            Variant adj_uuid_var = adjacent_uuids[i];
+
+            // 检查 UUID 是否为有效的字符串
+            if (adj_uuid_var.get_type() == Variant::STRING) {
+                String adj_uuid = adj_uuid_var;
+
+                // 检查 UUID 字符串是否为空并且该 UUID 是否已被访问
+                if (!adj_uuid.is_empty() && !visited.has(adj_uuid)) {
+                    // 正确地获取相邻的 navmesh
+                    SvoNavmesh* adj_navmesh = Object::cast_to<SvoNavmesh>(navmeshes[adj_uuid]);
+                    if (!adj_navmesh) continue;  // 如果转换失败或navmesh不存在，则跳过
+
+                    visited.insert(adj_uuid);
+                    queue.push(adj_uuid);
+
+                    // 计算位置偏移
+                    Vector3 local_offset;
+                    switch (i) {
+                    case 0: local_offset = Vector3(voxel_size, 0, 0); break;
+                    case 1: local_offset = Vector3(-voxel_size, 0, 0); break;
+                    case 2: local_offset = Vector3(0, voxel_size, 0); break;
+                    case 3: local_offset = Vector3(0, -voxel_size, 0); break;
+                    case 4: local_offset = Vector3(0, 0, voxel_size); break;
+                    case 5: local_offset = Vector3(0, 0, -voxel_size); break;
+                    }
+
+                    // 将局部偏移转换为全局偏移
+                    Vector3 global_offset = current_transform.basis.xform(local_offset);
+                    Transform3D new_transform = Transform3D(current_transform.basis, current_transform.origin + global_offset);
+                    adj_navmesh->set_transform(new_transform);
+                    adj_navmesh->set_voxel_size(current_navmesh->get_voxel_size());
+                    adj_navmesh->refresh_svo();
+                    UtilityFunctions::print(vformat("Adjust SVO: " + adj_uuid));
+                }
+            }
+        }
+    }
+}
+
+Array SvoNavmeshManager::find_possible_roots() {
+    // 将所有SvoNavmesh UUID添加到潜在根集合中
+    Array keys = navmeshes.keys();
+    Array potential_roots = keys.duplicate();
+
+    // 从潜在根集合中移除任何被引用的UUID
+    for (int i = 0; i < keys.size(); i++) {
+        Array adjacent_uuids = Object::cast_to<SvoNavmesh>(navmeshes[keys[i]])->adjacent_uuids;
+        for (int j = 0; j < adjacent_uuids.size(); j++) {
+            Variant adj_uuid_var = adjacent_uuids[j];
+            // 检查adj_uuid_var是否为有效的UUID
+            if (adj_uuid_var.get_type() == Variant::STRING) {
+                String adj_uuid = adj_uuid_var;
+                if (!adj_uuid.is_empty() && navmeshes.has(adj_uuid)) {
+                    potential_roots.erase(adj_uuid);
+                }
+            }
+        }
+    }
+    return potential_roots;
 }

@@ -28,7 +28,7 @@ var max_deceleration = 9.81 * 0.5  # Maximum deceleration, 1G
 func _ready():
 	thread = Thread.new()
 	# temp solution, replace with mamager when ready for games
-	svo = $"../spider exp project/SvoNavmesh"
+	svo = $"../spider exp project/Scene Collection/SvoNavmesh_1"
 	A_star_completed.connect(_on_A_star_completed)
 	Path_found.connect(_on_path_found)
 		
@@ -85,7 +85,8 @@ func _input(event):
 		if event.keycode == KEY_F:
 			var rand_empty_in_svo = _find_rand_empty_pos()
 			current_target_index = 0
-			path = svo.find_path(self.position, rand_empty_in_svo, agent_r_temp, true)
+			svo.find_path(self.position, rand_empty_in_svo, agent_r_temp, true)
+			path = svo.get_last_path_result()
 		if event.keycode == KEY_M:
 			find_path_multi_thread()
 

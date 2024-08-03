@@ -369,3 +369,16 @@ vertical_alignment = 1
 [node name="CheckBox" type="CheckBox" parent="HBoxContainer Path End"]
 layout_mode = 2
 button_pressed = true
+
+[node name="HBoxContainer Manager" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Label M" type="Label" parent="HBoxContainer Manager"]
+layout_mode = 2
+text = "SVO_Manager:"
+
+[node name="Tidy Button" type="Button" parent="HBoxContainer Manager"]
+custom_minimum_size = Vector2(10, 0)
+layout_mode = 2
+size_flags_horizontal = 10
+text = "Tidy Adjacents"

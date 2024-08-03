@@ -1,4 +1,4 @@
-[gd_scene load_steps=1201 format=3 uid="uid://3nscm2mqqamy"]
+[gd_scene load_steps=1202 format=3 uid="uid://3nscm2mqqamy"]
 
 [ext_resource type="Script" path="res://Scripts/Camera/free_camera.gd" id="1_kdrwc"]
 [ext_resource type="Script" path="res://Scripts/Scene/Running_Scene.gd" id="1_rafpn"]
@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://gltiorwgqtaq" path="res://Model/spider exp project_Image_1.png" id="3_wxwmj"]
 [ext_resource type="Script" path="res://Scripts/SVO/svo_runtime.gd" id="4_47m0g"]
 [ext_resource type="Script" path="res://Scripts/Bot/svo_nav_agent.gd" id="5_d3pvs"]
+[ext_resource type="Script" path="res://Scripts/SVO/svo_manager_runtime.gd" id="7_valfk"]
 
 [sub_resource type="PhysicsMaterial" id="PhysicsMaterial_gs5fc"]
 friction = 0.2
@@ -18675,14 +18676,37 @@ collision_mask = 15
 [node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/Scene Collection/Group Core/Hollow3_001/Hollow3_12_002/Hollow3_12_002_col"]
 shape = SubResource("ConvexPolygonShape3D_k8eki")
 
-[node name="SvoNavmesh" type="SvoNavmesh" parent="spider exp project"]
+[node name="SvoNavmesh_1" type="SvoNavmesh" parent="spider exp project/Scene Collection"]
+uuid = "01rdbj0r-kpm1-1ymt-1pk7w2vfgu17"
 debug_mode = true
-rootVoxelSize = 11.0
+rootVoxelSize = 10.0
 max_depth = 6
 DrawRef_minDepth = 3
 show_empty = false
 debug_path_scale = 0.2
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 9.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
+script = ExtResource("4_47m0g")
+
+[node name="SvoNavmesh_2" type="SvoNavmesh" parent="spider exp project/Scene Collection"]
+uuid = "o4al29ci-wh3b-6fbj-yk7wk8eldyo7"
+debug_mode = true
+rootVoxelSize = 10.0
+max_depth = 6
+DrawRef_minDepth = 3
+show_empty = false
+debug_path_scale = 0.2
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0)
+script = ExtResource("4_47m0g")
+
+[node name="SvoNavmesh_core" type="SvoNavmesh" parent="spider exp project/Scene Collection"]
+uuid = "acbda7sh-1gj4-r84k-i6vqgl2cq3ff"
+adjacent_uuids = [null, null, "01rdbj0r-kpm1-1ymt-1pk7w2vfgu17", "o4al29ci-wh3b-6fbj-yk7wk8eldyo7", null, null]
+debug_mode = true
+rootVoxelSize = 10.0
+max_depth = 6
+DrawRef_minDepth = 3
+show_empty = false
+debug_path_scale = 0.2
 script = ExtResource("4_47m0g")
 
 [node name="NavAgent" type="RigidBody3D" parent="."]
@@ -18719,3 +18743,6 @@ visible = false
 [node name="Camera FPS" type="Camera3D" parent="NavAgent"]
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0, 0, -0.05)
 visible = false
+
+[node name="SvoNavmeshManager" type="SvoNavmeshManager" parent="."]
+script = ExtResource("7_valfk")

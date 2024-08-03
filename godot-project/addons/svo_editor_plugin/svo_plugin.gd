@@ -21,6 +21,7 @@ func _enter_tree():
 	dock_content.get_node("HBoxContainer ID Query/Check Voxel Info Button").pressed.connect(_on_check_id_pressed)
 	dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Button").connect("gui_input", _on_gui_input)
 	dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Button/PopupMenu").connect("id_pressed", _on_popup_id_pressed)
+	dock_content.get_node("HBoxContainer Manager/Tidy Button").pressed.connect(_on_tidy_pressed)
 	#dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Button").get_popup().id_pressed.connect(_on_popup_id_pressed)
 
 func _exit_tree():
@@ -171,3 +172,10 @@ func _find_rand_empty_pos(selected_node):
 		
 	print("Failed to find an empty position after", max_attempts, "attempts.")
 	return null
+
+func _on_tidy_pressed():
+	var editor_selection = get_editor_interface().get_selection()
+	var selected_node = editor_selection.get_selected_nodes()[0]
+	if selected_node is SvoNavmeshManager:
+		selected_node.tidy_adjacents()
+	
