@@ -41,8 +41,8 @@ OctreeNode::OctreeNode():
     }
 }
 OctreeNode::OctreeNode(OctreeNode* father_node, int depth, int index):
-    currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr), 
-    father(father_node), center(Vector3(0, 0, 0)), debugChecked(false), debugMesh(nullptr)
+    currentDepth(depth), currentIndex(index), isLeaf(true), voxel(nullptr), father(father_node), 
+    center(Vector3(0, 0, 0)), centerGlobal(Vector3(0, 0, 0)), debugChecked(false), debugMesh(nullptr)
 {
     for (int i = 0; i < 8; ++i) {
         children[i] = nullptr;
@@ -91,11 +91,12 @@ void OctreeNode::queue_free_debug_mesh() {
 
 String OctreeNode::get_voxel_info() const{
     String voxel_info = (voxel != nullptr) ? voxel->to_string() : "Voxel: null";
-    return vformat("OctreeNode(Leaf: %s, Depth: %d, Index: %d, Center: %s, %s)",
+    return vformat("OctreeNode(Leaf: %s, Depth: %d, Index: %d, Center: %s, CenterGlobal: %s, %s)",
         isLeaf ? "true" : "false",
         currentDepth,
         currentIndex,
         center,
+        centerGlobal,
         voxel_info);
 }
 
@@ -244,7 +245,6 @@ OctreeNode* SparseVoxelOctree::get_deepest_node(Vector3 pos) {
     return node;
 }
 
-
 //ÁÙÊ±ÆúÓÃ; Temp Abandon
 void SparseVoxelOctree::update(Vector3 pos, bool isSolid) {
     update(root, pos, Vector3(0,0,0), 1, isSolid ? VS_SOLID : VS_EMPTY);
@@ -347,6 +347,19 @@ void SparseVoxelOctree::update_node_centers(OctreeNode* node, Vector3 center, in
     }
 }
 
+void SparseVoxelOctree::update_global_centers() {
+    update_global_centers(root);
+}
+void SparseVoxelOctree::update_global_centers(OctreeNode* node) {
+    node->centerGlobal = last_transform.xform(node->center);
+
+    for (int i = 0; i < 8; i++) {
+        if (node->children[i]) {
+            update_global_centers(node->children[i]);
+        }
+    }
+}
+
 void SparseVoxelOctree::compress_node()
 {
     compress_node(root, 1);
@@ -433,6 +446,7 @@ void SparseVoxelOctree::create_empty_children(OctreeNode* node, int depth) {
         float halfSize = voxelSize / pow(2, depth);
         Vector3 childCenter = node->center + octant_offset(i, halfSize);
         node->children[i]->center = childCenter;
+        node->children[i]->centerGlobal = last_transform.xform(childCenter);
     }
 }
 void SparseVoxelOctree::create_solid_children(OctreeNode* node, int depth) {
@@ -451,6 +465,7 @@ void SparseVoxelOctree::create_solid_children(OctreeNode* node, int depth) {
         float halfSize = voxelSize / pow(2, depth);
         Vector3 childCenter = node->center + octant_offset(i, halfSize);
         node->children[i]->center = childCenter;
+        node->children[i]->centerGlobal = last_transform.xform(childCenter);
     }
 }
 void SparseVoxelOctree::evaluate_homogeneity(OctreeNode* node) {

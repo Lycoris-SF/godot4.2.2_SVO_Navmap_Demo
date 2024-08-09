@@ -8,9 +8,11 @@ func _init():
 
 func _ready():
 	if self.is_visible_in_tree():
+		self.manual_set_node_ready()
 		self.clear_svo(false)
 		self.refresh_svo()
 		if not Engine.is_editor_hint():
+			self.debug_mode = GlobalValue.svo_debugMode
 			self.rebuild_svo()
 	
 func _input(event):

@@ -13,6 +13,8 @@ func _enter_tree():
 	dock_content.get_node("HBoxContainer Rebuild/Refresh Button").pressed.connect(_on_refresh_pressed)
 	dock_content.get_node("HBoxContainer Clear/Clear Button").pressed.connect(_on_clear_svo_pressed)
 	dock_content.get_node("HBoxContainer Clear/ClearAll Button").pressed.connect(_on_clear_all_pressed)
+	dock_content.get_node("HBoxContainer Connector/Generate Connector").pressed.connect(_on_generate_connector_pressed)
+	dock_content.get_node("HBoxContainer Connector/Clear Connector").pressed.connect(_on_clear_connector_pressed)
 	dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Button/Insert Button").pressed.connect(_on_insert_pressed)
 	dock_content.get_node("HBoxContainer Update/Update Button").pressed.connect(_on_update_pressed)
 	dock_content.get_node("HBoxContainer Query/Query Button").pressed.connect(_on_query_pressed)
@@ -74,6 +76,16 @@ func _on_clear_svo_pressed():
 	var selected_node = editor_selection.get_selected_nodes()[0]
 	if selected_node is SvoNavmesh:
 		selected_node.clear_svo(false)
+func _on_generate_connector_pressed():
+	var editor_selection = get_editor_interface().get_selection()
+	var selected_node = editor_selection.get_selected_nodes()[0]
+	if selected_node is SvoNavmesh:
+		selected_node.generate_connector()
+func _on_clear_connector_pressed():
+	var editor_selection = get_editor_interface().get_selection()
+	var selected_node = editor_selection.get_selected_nodes()[0]
+	if selected_node is SvoNavmesh:
+		selected_node.clear_connector()
 		
 func _on_insert_pressed():
 	var editor_selection = get_editor_interface().get_selection()

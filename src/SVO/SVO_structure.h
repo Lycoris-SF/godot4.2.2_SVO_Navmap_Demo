@@ -42,6 +42,7 @@ namespace godot {
         int currentDepth;
         int currentIndex;
         Vector3 center;
+        Vector3 centerGlobal;   //_process this if svo is dynamic
         Voxel* voxel;
         OctreeNode* father;
         OctreeNode* children[8];
@@ -75,6 +76,7 @@ namespace godot {
     public:
         int maxDepth;
         float voxelSize;
+        Transform3D last_transform;
         OctreeNode* root;
 
         SparseVoxelOctree();
@@ -86,6 +88,7 @@ namespace godot {
         OctreeNode* get_deepest_node(Vector3 pos);
         void update(Vector3 pos, bool isSolid);
         void update_node_centers();
+        void update_global_centers();
         void compress_node();
         void expand_node();
         void clear();
@@ -102,6 +105,7 @@ namespace godot {
         void update(OctreeNode* node, Vector3 pos, Vector3 center, int depth, VoxelState newState);
         // functional update
         void update_node_centers(OctreeNode* node, Vector3 center, int depth);
+        void update_global_centers(OctreeNode* node);
         void compress_node(OctreeNode* node, int depth);
         void expand_node(OctreeNode* node, int depth);
         void reevaluate_homogeneity_insert(OctreeNode* node);

@@ -50,6 +50,28 @@ theme_override_colors/font_focus_color = Color(0.784314, 0, 0, 1)
 text = "Clear SVO
 "
 
+[node name="HBoxContainer Connector" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(0, 35)
+layout_mode = 2
+
+[node name="Generate Connector" type="Button" parent="HBoxContainer Connector"]
+custom_minimum_size = Vector2(200, 35)
+layout_mode = 2
+size_flags_horizontal = 0
+text = "Generate Connector
+"
+
+[node name="Clear Connector" type="Button" parent="HBoxContainer Connector"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 10
+theme_override_colors/font_color = Color(0.784314, 0, 0, 1)
+theme_override_colors/font_pressed_color = Color(1, 0, 0, 1)
+theme_override_colors/font_hover_color = Color(0.498039, 0, 0, 1)
+theme_override_colors/font_focus_color = Color(0.784314, 0, 0, 1)
+text = "Clear Connector
+"
+
 [node name="VBoxContainer_Insert" type="VBoxContainer" parent="."]
 layout_mode = 2
 

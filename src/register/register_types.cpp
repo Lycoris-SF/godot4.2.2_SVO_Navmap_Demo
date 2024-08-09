@@ -7,6 +7,7 @@
 
 #include "SVO/svo_navmesh.h"
 #include "SVO/svo_navmesh_manager.h"
+#include "SVO/svo_connector.h"
 using namespace godot;
 
 
@@ -20,6 +21,7 @@ void initialize_svo_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<SparseVoxelOctree>();
     ClassDB::register_class<SvoNavmesh>();          //main
     ClassDB::register_class<SvoNavmeshManager>();
+    ClassDB::register_class<SvoConnector>();
     
 }
 

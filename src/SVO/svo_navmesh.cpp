@@ -1,6 +1,5 @@
 #include "svo_navmesh.h"
 
-#include <godot_cpp/classes/node3d.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
 #include <godot_cpp/classes/time.hpp>
@@ -70,14 +69,20 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("get_show_empty"), &SvoNavmesh::get_show_empty);
     ClassDB::bind_method(D_METHOD("set_show_empty", "show_empty"), &SvoNavmesh::set_show_empty);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "show_empty"), "set_show_empty", "get_show_empty");
+    ClassDB::bind_method(D_METHOD("get_show_path"), &SvoNavmesh::get_show_path);
+    ClassDB::bind_method(D_METHOD("set_show_path", "show_path"), &SvoNavmesh::set_show_path);
+    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "show_path"), "set_show_path", "get_show_path");
     ClassDB::bind_method(D_METHOD("get_debug_path_scale"), &SvoNavmesh::get_debug_path_scale);
     ClassDB::bind_method(D_METHOD("set_debug_path_scale", "scale"), &SvoNavmesh::set_debug_path_scale);
     ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "debug_path_scale"), "set_debug_path_scale", "get_debug_path_scale");
+    ClassDB::bind_method(D_METHOD("manual_set_node_ready"), &SvoNavmesh::manual_set_node_ready);
 
-    // button method
+    // structure
     ClassDB::bind_method(D_METHOD("rebuild_svo"), &SvoNavmesh::rebuild_svo);
     ClassDB::bind_method(D_METHOD("refresh_svo"), &SvoNavmesh::refresh_svo);
     ClassDB::bind_method(D_METHOD("clear_svo"), &SvoNavmesh::clear_svo);
+    ClassDB::bind_method(D_METHOD("generate_connector"), &SvoNavmesh::generate_connector);
+    ClassDB::bind_method(D_METHOD("clear_connector"), &SvoNavmesh::clear_connector);
 
     // generate svo from collider
     ClassDB::bind_method(D_METHOD("insert_svo_based_on_collision_shapes"), &SvoNavmesh::insert_svo_based_on_collision_shapes);
@@ -88,14 +93,15 @@ void SvoNavmesh::_bind_methods() {
     ClassDB::bind_method(D_METHOD("direct_path_check", "start", "end", "agent_r"), &SvoNavmesh::direct_path_check);
     ClassDB::bind_method(D_METHOD("get_last_path_result"), &SvoNavmesh::get_last_path_result);
     ClassDB::bind_method(D_METHOD("find_raw_path", "start", "end", "agent_r"), &SvoNavmesh::find_raw_path_v2);
-    ClassDB::bind_method(D_METHOD("smooth_path_string_pulling_fast_v2", "agent_r"), &SvoNavmesh::smooth_path_string_pulling_fast_v2);
+    ClassDB::bind_method(D_METHOD("smooth_path", "agent_r"), &SvoNavmesh::smooth_path_string_pulling_v3);
     ClassDB::bind_method(D_METHOD("init_debug_path", "agent_r"), &SvoNavmesh::init_debug_path);
     ClassDB::bind_method(D_METHOD("transfer_path_result"), &SvoNavmesh::transfer_path_result);
 }
 
 SvoNavmesh::SvoNavmesh(): 
-    maxDepth(3), rootVoxelSize(1.0f), minVoxelSize(0.25f), testdouble(1.14f), debug_mode(false), collision_layer(5), 
-    debug_path_scale(1.0f), node_ready(false), DrawRef_minDepth(1), DrawRef_maxDepth(3), show_empty(true), debugChecked_node(nullptr)
+    maxDepth(3), rootVoxelSize(1.0f), minVoxelSize(0.25f), testdouble(1.14f), debug_mode(false), collision_layer(5),
+    debug_path_scale(1.0f), node_ready(false), DrawRef_minDepth(1), DrawRef_maxDepth(3), show_empty(true), 
+    show_path(true), debugChecked_node(nullptr), outer_connector(), inner_connector()
 {
     svo = memnew(SparseVoxelOctree);
 }
@@ -339,6 +345,10 @@ void SvoNavmesh::set_collision_layer(int layer) {
     collision_layer = layer;
 }
 
+void SvoNavmesh::manual_set_node_ready() {
+    node_ready = true;
+}
+
 // <debug draw set/get>
 bool SvoNavmesh::get_debug_mode() const {
     return debug_mode;
@@ -394,6 +404,13 @@ bool SvoNavmesh::get_show_empty() const {
 void SvoNavmesh::set_show_empty(bool show_empty) {
     this->show_empty = show_empty;
 }
+bool SvoNavmesh::get_show_path() const {
+    return show_path;
+}
+void SvoNavmesh::set_show_path(bool show_path) {
+    this->show_path = show_path;
+    draw_path_switch_visible(show_path);
+}
 float SvoNavmesh::get_debug_path_scale() const {
     return debug_path_scale;
 }
@@ -415,15 +432,15 @@ Array SvoNavmesh::get_last_path_result() {
  Clear the svo and total rebuild base on collision shapes.
  */
 void SvoNavmesh::rebuild_svo() {
-    uint64_t begin = Time::get_singleton()->get_ticks_msec();
-
     svo->maxDepth = maxDepth;
     svo->voxelSize = rootVoxelSize;
+    svo->last_transform = get_global_transform();
 
     if (debug_mode) {
         //reset_pool();
         reset_pool_v3();
         svo->clear();
+        clear_connector();
 
         insert_svo_based_on_collision_shapes();
         //init_debug_mesh(svo->root, 1);
@@ -432,12 +449,101 @@ void SvoNavmesh::rebuild_svo() {
     }
     else {
         svo->clear();
+        clear_connector();
+
         insert_svo_based_on_collision_shapes();
         init_neighbors();
     }
+}
 
-    uint64_t end = Time::get_singleton()->get_ticks_msec();
-    UtilityFunctions::print(vformat("init neighbors with %d milliseconds", end - begin));
+/**
+ Calculate connector ponit based on connected faces.
+ */
+Vector<Vector3> SvoNavmesh::calculate_connector_points() {
+    Transform3D global_transform = get_global_transform();
+    float halfSize = rootVoxelSize / 2.0;
+    Vector<Vector3> points;
+
+    // 定义面对应的顶点索引
+    Vector<Vector<int>> face_indices;
+    face_indices.push_back(Vector<int>{0, 1, 3, 2}); // 面1
+    face_indices.push_back(Vector<int>{4, 5, 7, 6}); // 面2
+    face_indices.push_back(Vector<int>{0, 1, 5, 4}); // 面3
+    face_indices.push_back(Vector<int>{2, 3, 7, 6}); // 面4
+    face_indices.push_back(Vector<int>{0, 2, 6, 4}); // 面5
+    face_indices.push_back(Vector<int>{1, 3, 7, 5}); // 面6
+
+    // 计算所有顶点
+    Vector<Vector3> all_vertices;
+    for (int x = -1; x <= 1; x += 2) {
+        for (int y = -1; y <= 1; y += 2) {
+            for (int z = -1; z <= 1; z += 2) {
+                all_vertices.push_back(global_transform.xform(Vector3(x * halfSize, y * halfSize, z * halfSize)));
+            }
+        }
+    }
+
+    // 生成面的中点和顶点，仅当面没有相邻的SVO时
+    for (int i = 0; i < face_indices.size(); ++i) {
+        if (!adjacent_uuids.is_empty() && adjacent_uuids[i].get_type() == Variant::STRING && !String(adjacent_uuids[i]).is_empty()) {
+            // 面已连接，跳过此面的点
+            continue;
+        }
+
+        Vector<int> indices = face_indices[i];
+        Vector<Vector3> face_vertices;
+        for (int index : indices) {
+            face_vertices.push_back(all_vertices[index]);
+        }
+        // 添加面的顶点
+        points.append_array(face_vertices);
+
+        // 添加面的边中点
+        for (int j = 0; j < face_vertices.size(); ++j) {
+            Vector3 midpoint = (face_vertices[j] + face_vertices[(j + 1) % face_vertices.size()]) * 0.5;
+            points.push_back(midpoint);
+        }
+
+        // 添加对角线中点（仅适用于四边形）
+        points.push_back((face_vertices[0] + face_vertices[2]) * 0.5);
+        points.push_back((face_vertices[1] + face_vertices[3]) * 0.5);
+    }
+
+    return points;
+}
+
+/**
+ Generate connectors based on physics.
+ */
+void SvoNavmesh::generate_connector() {
+    // Clear old debug children
+    clear_connector();
+
+    Vector<Vector3> points = calculate_connector_points();
+    for (int i = 0; i < points.size(); ++i) {
+        SvoConnector *outer = memnew(SvoConnector);
+        outer->set_position(points[i]);
+        outer_connector.push_back(outer);
+        add_child(outer);
+        outer->init_debugMesh(minVoxelSize / 3);
+    }
+}
+
+/**
+ Clear connectors.
+ */
+void SvoNavmesh::clear_connector() {
+    // Clear old debug children
+    for (int i = 0; i < outer_connector.size(); ++i) {
+        remove_child(outer_connector[i]);
+        memdelete(outer_connector[i]);
+    }
+    outer_connector.clear();
+    for (int i = 0; i < inner_connector.size(); ++i) {
+        remove_child(inner_connector[i]);
+        memdelete(inner_connector[i]);
+    }
+    inner_connector.clear();
 }
 
 /**
@@ -469,6 +575,10 @@ void SvoNavmesh::refresh_svo() {
         // refresh center
         svo->update_node_centers();
     }
+    if (!svo->last_transform.is_equal_approx(get_global_transform())) {
+        svo->last_transform = get_global_transform();
+        svo->update_global_centers();
+    }
     //if (debug_mode) init_debug_mesh(svo->root, 1);
     if (debug_mode) init_debug_mesh_v3();
     init_neighbors();
@@ -480,7 +590,6 @@ void SvoNavmesh::refresh_svo() {
  * @param clear_setting: whether also clear svo setting.
  */
 void SvoNavmesh::clear_svo(bool clear_setting) {
-    //if (debug_mode) reset_pool();
     if (debug_mode) reset_pool_v3();
     if (clear_setting) {
         // clear svo and settings
@@ -492,7 +601,8 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
         // clear only svo
         svo->clear();
     }
-    //if (debug_mode) init_debug_mesh(svo->root, 1);
+    clear_connector();
+
     if (debug_mode) init_debug_mesh_v3();
     init_neighbors();
 }
@@ -780,27 +890,38 @@ static void init_static_material()
     debugCheckMaterial->set_albedo(Color(0.2, 0.2, 1.0, 0.2));  // 半透明蓝紫色
 
     if (debugPathMaterialB.is_null()) debugPathMaterialB.instantiate();
-    debugPathMaterialB->set_albedo(Color(0.2, 0.2, 0.7));  // 半透明蓝色
+    debugPathMaterialB->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+    debugPathMaterialB->set_albedo(Color(0.2, 0.2, 0.7, 0.7));  // 蓝色
 
     if (debugPathMaterialY.is_null()) debugPathMaterialY.instantiate();
-    debugPathMaterialY->set_albedo(Color(0.9, 0.6, 0.1));  // 半透明黄色
+    debugPathMaterialY->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+    debugPathMaterialY->set_albedo(Color(0.9, 0.6, 0.1, 0.7));  // 黄色
 
     if (debugPathMaterialR.is_null()) debugPathMaterialR.instantiate();
-    debugPathMaterialR->set_albedo(Color(0.9, 0.2, 0.2));  // 半透明红色
+    debugPathMaterialR->set_transparency(StandardMaterial3D::TRANSPARENCY_ALPHA);
+    debugPathMaterialR->set_albedo(Color(0.9, 0.2, 0.2, 0.7));  // 红色
 
     if (debugEmptyMaterial.is_null()) debugEmptyMaterial.instantiate();
     if (EmptyMaterial_shader.is_null()) {
         EmptyMaterial_shader.instantiate();
         EmptyMaterial_shader->set_code(R"(
             shader_type spatial;
-            render_mode wireframe, cull_disabled;
+            render_mode unshaded,wireframe,cull_disabled;
 
             void fragment() {
-                ALBEDO = vec3(1.0, 0.0, 0.0);
+                ALBEDO = vec3(0.7, 0.0, 0.0);
+                ALPHA = 0.7;
             }
         )");
     }
     debugEmptyMaterial->set_shader(EmptyMaterial_shader);
+
+    // no shadow
+    debugSolidMaterial->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+    debugCheckMaterial->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+    debugPathMaterialB->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+    debugPathMaterialY->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
+    debugPathMaterialR->set_shading_mode(StandardMaterial3D::SHADING_MODE_UNSHADED);
 }
 static void clear_static_material() {
     // static Mat is not freed after level switch
@@ -869,7 +990,11 @@ void SvoNavmesh::reset_debugCheck() {
  Debug rendering only
  */
 void SvoNavmesh::init_debug_mesh_v3() {
+    uint64_t begin = Time::get_singleton()->get_ticks_msec();
     init_debug_mesh_v3(svo->root, 1);
+    uint64_t end = Time::get_singleton()->get_ticks_msec();
+    UtilityFunctions::print(vformat("init debugMesh with %d milliseconds", end - begin));
+
     if (!exist_meshes.is_empty()) {
         for (int i = 0; i < exist_meshes.size(); ++i) {
             OctreeNode* instance_node = exist_meshes[i];
@@ -934,6 +1059,8 @@ void SvoNavmesh::init_debug_mesh_v3(OctreeNode* node, int depth)
  */
 void SvoNavmesh::init_neighbors()
 {
+    uint64_t begin = Time::get_singleton()->get_ticks_msec();
+
     Vector<OctreeNode*> queue;
     queue.push_back(svo->root);
 
@@ -949,6 +1076,9 @@ void SvoNavmesh::init_neighbors()
 
         set_neighbors(current);
     }
+
+    uint64_t end = Time::get_singleton()->get_ticks_msec();
+    UtilityFunctions::print(vformat("init neighbors with %d milliseconds", end - begin));
 }
 void SvoNavmesh::set_neighbors(OctreeNode* node)
 {
@@ -1020,6 +1150,15 @@ void SvoNavmesh::draw_svo_v3(OctreeNode* node, int current_depth, int min_depth,
         if (node->children[i]) {
             draw_svo_v3(node->children[i], current_depth + 1, min_depth, max_depth);
         }
+    }
+}
+
+/**
+ Switch the path visiblity.
+ */
+void SvoNavmesh::draw_path_switch_visible(bool show) {
+    for (MeshInstance3D* path: path_pool) {
+        path->set_visible(show);
     }
 }
 
@@ -1232,13 +1371,15 @@ bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3
 }
 
 float calculateSegmentLength(float rootVoxelSize, float minVoxelSize) {
-    float phiInverse = 0.61803398875;
+    float phiInverse = 0.61803398875/2;
     float segment_length = minVoxelSize + (rootVoxelSize - minVoxelSize) * phiInverse;
     return segment_length;
 }
 
 /**
  fast smooth_path (though not lot faster)
+ Try to find the most distant directly reachable point possible;
+ Than jump to that point.
  */
 void SvoNavmesh::smooth_path_string_pulling_fast(float agent_radius) {
     if (exist_path.size() < 2) {
@@ -1332,8 +1473,12 @@ void SvoNavmesh::smooth_path_string_pulling_fast_v2(float agent_radius) {
     exist_path = smooth_path;
 }
 
+
 /**
  better smooth_path
+ Check the directness from the current point to all subsequent points on the path,;
+ records the farthest points that can be reached directly;
+ Than jump to that point.
  */
 void SvoNavmesh::smooth_path_string_pulling_full(float agent_radius) {
     if (exist_path.size() < 2) {
@@ -1416,6 +1561,74 @@ void SvoNavmesh::smooth_path_string_pulling_full_v2(float agent_radius) {
 
     exist_path = smooth_path;
 }
+
+/**
+ jump point smooth_path (with subdivide path)
+ */
+void SvoNavmesh::smooth_path_string_pulling_v3(float agent_radius) {
+    if (exist_path.size() < 2) {
+        return;
+    }
+
+    // First cut the entire path
+    // 先对整个路径进行切割
+    // 目前切割使用距离为: minVoxelSize*2
+    Vector<Vector3> subdivided_path;
+    float segment_length = calculateSegmentLength(rootVoxelSize, minVoxelSize);
+    for (int i = 0; i < exist_path.size() - 1; ++i) {
+        Vector<Vector3> segment_points = subdivide_path(exist_path[i], exist_path[i + 1], segment_length);
+        if (i != 0) {
+            segment_points.remove_at(0);
+        }
+        for (int k = 0; k < segment_points.size(); ++k) {
+            subdivided_path.push_back(segment_points[k]);
+        }
+    }
+
+    Vector<Vector3> smooth_path;
+    smooth_path.push_back(subdivided_path[0]);
+
+    int i = 0;
+    while (i < subdivided_path.size() - 1) {
+        int j = i + 1;
+        bool can_traverse;
+        bool can_jump=false;
+        while (j < subdivided_path.size()-1) {
+            if (agent_radius > 0.0f) {
+                can_jump = can_travel_directly_with_cylinder(subdivided_path[j], subdivided_path[subdivided_path.size() - 1], agent_radius);
+            }
+            else {
+                can_jump = can_travel_directly_with_ray(subdivided_path[j], subdivided_path[subdivided_path.size() - 1]);
+            }
+            if (can_jump) {
+                smooth_path.push_back(subdivided_path[j]);
+                smooth_path.push_back(subdivided_path[subdivided_path.size() - 1]);
+                break;
+            }
+
+            if (agent_radius > 0.0f) {
+                can_traverse = can_travel_directly_with_cylinder(subdivided_path[i], subdivided_path[j], agent_radius);
+            }
+            else {
+                can_traverse = can_travel_directly_with_ray(subdivided_path[i], subdivided_path[j]);
+            }
+            if (!can_traverse) {
+                break;
+            }
+            ++j;
+        }
+        if(can_jump) break;
+
+        if (j == i + 1) {
+            // Avoid infinite loop by ensuring at least one progress
+            j++;
+        }
+        smooth_path.push_back(subdivided_path[j - 1]);
+        i = j - 1;
+    }
+    exist_path = smooth_path;
+}
+
 /**
  cut the path
  */
@@ -1661,7 +1874,7 @@ void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agen
             begin_time_u = Time::get_singleton()->get_ticks_usec();
             begin_time_m = Time::get_singleton()->get_ticks_msec();
 
-            smooth_path_string_pulling_fast_v2(agent_r);
+            smooth_path_string_pulling_v3(agent_r);
 
             end_time_u = Time::get_singleton()->get_ticks_usec();
             end_time_m = Time::get_singleton()->get_ticks_msec();
@@ -1843,7 +2056,7 @@ bool SvoNavmesh::find_raw_path(Vector3 start, Vector3 end, float agent_r) {
 }
 
 /**
- * A* pathfinding with support for point not reachable.
+ * A* pathfinding with support for point not reachable and global pos.
  * Nearest node will be the end.
  *
  * @param start: The path start position(world).
@@ -1865,8 +2078,8 @@ bool SvoNavmesh::find_raw_path_v2(Vector3 start, Vector3 end, float agent_r) {
     came_from[start_node->center] = start_grid;  // manual add start
     open_set.push_back(start_node);
     g_score[start_node->get_instance_id()] = 0;
-    f_score[start_node->get_instance_id()] = heuristic(start_node, end_node);
-    float nearest_distance = end_node->center.distance_to(start_node->center);
+    f_score[start_node->get_instance_id()] = heuristic(start_node->centerGlobal, end_node->centerGlobal);
+    float nearest_distance = end_node->centerGlobal.distance_to(start_node->centerGlobal);
 
     while (!open_set.is_empty()) {
         OctreeNode* current = get_lowest_f_score_node(open_set, f_score);
@@ -1891,19 +2104,19 @@ bool SvoNavmesh::find_raw_path_v2(Vector3 start, Vector3 end, float agent_r) {
             }
 
             //float temp_current = (float)g_score[current];
-            float tentative_g_score = (float)g_score[current->get_instance_id()] + current->center.distance_to(neighbor->center);
+            float tentative_g_score = (float)g_score[current->get_instance_id()] + current->centerGlobal.distance_to(neighbor->centerGlobal);
             //float temp_neighbor = (float)g_score[neighbor];
 
             if (tentative_g_score < (float)g_score[neighbor->get_instance_id()]) {
                 came_from[neighbor->center] = current->center;
                 g_score[neighbor->get_instance_id()] = tentative_g_score;
-                f_score[neighbor->get_instance_id()] = tentative_g_score + heuristic(neighbor, end_node);
+                f_score[neighbor->get_instance_id()] = tentative_g_score + heuristic(neighbor->centerGlobal, end_node->centerGlobal);
 
                 if (!open_set.has(neighbor)) {
                     open_set.push_back(neighbor);
                     // update nearest
                     // 更新最近节点
-                    float distance_to_goal = end_node->center.distance_to(neighbor->center);
+                    float distance_to_goal = end_node->centerGlobal.distance_to(neighbor->centerGlobal);
                     if (distance_to_goal < nearest_distance) {
                         nearest_node = neighbor;
                         nearest_distance = distance_to_goal;

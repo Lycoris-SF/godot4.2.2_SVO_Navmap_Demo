@@ -5,7 +5,7 @@ signal Path_found
 
 # thread(only one in background)
 var thread: Thread
-var is_smooth
+var is_smooth: bool
 var is_physics_task_set = false
 
 # Microbenchmarking 
@@ -26,9 +26,10 @@ var max_acceleration = 9.81 * 0.7  # Maximum acceleration, 3G
 var max_deceleration = 9.81 * 0.5  # Maximum deceleration, 1G
 
 func _ready():
+	is_smooth = true
 	thread = Thread.new()
 	# temp solution, replace with mamager when ready for games
-	svo = $"../spider exp project/Scene Collection/SvoNavmesh_1"
+	svo = $"../spider exp project/SvoNavmesh"
 	A_star_completed.connect(_on_A_star_completed)
 	Path_found.connect(_on_path_found)
 		
@@ -85,7 +86,7 @@ func _input(event):
 		if event.keycode == KEY_F:
 			var rand_empty_in_svo = _find_rand_empty_pos()
 			current_target_index = 0
-			svo.find_path(self.position, rand_empty_in_svo, agent_r_temp, true)
+			svo.find_path(self.position, rand_empty_in_svo, agent_r_temp, is_smooth)
 			path = svo.get_last_path_result()
 		if event.keycode == KEY_M:
 			find_path_multi_thread()
@@ -119,7 +120,6 @@ func _find_rand_empty_pos():
 	return null
 
 func find_path_multi_thread():
-	is_smooth = true
 	current_target_index = 0
 	path.clear()
 	var rand_empty_in_svo = _find_rand_empty_pos()
@@ -156,7 +156,7 @@ func PF_physics_task():
 	begin_time_u = Time.get_ticks_usec()
 	begin_time_m = Time.get_ticks_msec()
 	
-	svo.smooth_path_string_pulling_fast_v2(agent_r_temp)
+	svo.smooth_path(agent_r_temp)
 	svo.transfer_path_result()
 	
 	end_time_u = Time.get_ticks_usec()
