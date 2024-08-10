@@ -1,6 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Cpp_test|Win32">
+      <Configuration>Cpp_test</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Cpp_test|x64">
+      <Configuration>Cpp_test</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="GD_debug|Win32">
       <Configuration>GD_debug</Configuration>
       <Platform>Win32</Platform>
@@ -54,6 +62,12 @@
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Cpp_test|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_game|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -71,6 +85,14 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>false</EnableASAN>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Cpp_test|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -86,6 +108,9 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='GD_debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Cpp_test|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='GD_game|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
@@ -95,24 +120,33 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='GD_debug|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Cpp_test|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_game|x64'">
     <OutDir>$(SolutionDir)godot-project\bin\</OutDir>
     <IncludePath>$(SolutionDir)godot-cpp\gdextension;$(SolutionDir)godot-cpp\gen\include;$(SolutionDir)godot-cpp\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)godot-cpp\bin;$(LibraryPath)</LibraryPath>
-    <TargetName>godot_library</TargetName>
+    <TargetName>libgdexample.windows.template_debug.x86_64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_dev|x64'">
     <OutDir>$(SolutionDir)godot-project\bin\</OutDir>
     <IncludePath>$(SolutionDir)godot-cpp\gdextension;$(SolutionDir)godot-cpp\gen\include;$(SolutionDir)godot-cpp\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)godot-cpp\bin;$(LibraryPath)</LibraryPath>
-    <TargetName>godot_library</TargetName>
+    <TargetName>libgdexample.windows.template_debug.x86_64</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_debug|x64'">
     <OutDir>$(SolutionDir)godot-project\bin\</OutDir>
     <IncludePath>$(SolutionDir)godot-cpp\gdextension;$(SolutionDir)godot-cpp\gen\include;$(SolutionDir)godot-cpp\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(SolutionDir)godot-cpp\bin;$(LibraryPath)</LibraryPath>
     <TargetName>libgdexample.windows.template_debug.x86_64</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Cpp_test|x64'">
+    <OutDir>$(SolutionDir)\$(Platform)\$(Configuration)\</OutDir>
+    <IncludePath>$(SolutionDir)godot-cpp\gdextension;$(SolutionDir)godot-cpp\gen\include;$(SolutionDir)godot-cpp\include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)godot-cpp\bin;$(LibraryPath)</LibraryPath>
+    <TargetName>libgdexample.windows.cpp_test.x86_64</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='GD_game|Win32'">
     <ClCompile>
@@ -150,15 +184,27 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Cpp_test|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='GD_game|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TYPED_METHOD_BIND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>D:\Project\Godot\godot-vs-template-master\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Project\Godot\godot-vs-template-4.22\src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -170,11 +216,11 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>TYPED_METHOD_BIND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>D:\Project\Godot\godot-vs-template-master\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Project\Godot\godot-vs-template-4.22\src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -190,7 +236,23 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>D:\Project\Godot\godot-vs-template-master\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>D:\Project\Godot\godot-vs-template-4.22\src</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>libgodot-cpp.windows.template_debug.x86_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Cpp_test|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>TYPED_METHOD_BIND;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>D:\Project\Godot\godot-vs-template-4.22\src</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -199,19 +261,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="src\gdscenesprite.cpp" />
     <ClCompile Include="src\register\register_types.cpp" />
-    <ClCompile Include="src\SVO\SvoNavmesh.cpp" />
-    <ClCompile Include="src\SVO\SvoNavmeshManager.cpp" />
-    <ClCompile Include="src\SVO\SVO_structure.cpp" />
+    <ClCompile Include="src\SVO\svo_connector.cpp" />
+    <ClCompile Include="src\SVO\svo_navmesh.cpp" />
+    <ClCompile Include="src\SVO\svo_navmesh_manager.cpp" />
+    <ClCompile Include="src\SVO\svo_resource.cpp" />
+    <ClCompile Include="src\SVO\svo_structure.cpp" />
+    <ClCompile Include="src\Test\test_svo.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
-    <ClInclude Include="src\gdscenesprite.h" />
     <ClInclude Include="src\register\register_types.h" />
-    <ClInclude Include="src\SVO\SvoNavmesh.h" />
-    <ClInclude Include="src\SVO\SvoNavmeshManager.h" />
-    <ClInclude Include="src\SVO\SVO_structure.h" />
+    <ClInclude Include="src\SVO\svo_connector.h" />
+    <ClInclude Include="src\SVO\svo_navmesh.h" />
+    <ClInclude Include="src\SVO\svo_navmesh_manager.h" />
+    <ClInclude Include="src\SVO\svo_resource.h" />
+    <ClInclude Include="src\SVO\svo_structure.h" />
+    <ClInclude Include="src\Test\test_svo.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="godot_vs2.rc" />

@@ -10,12 +10,19 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_dev|x64'">
     <LocalDebuggerCommand>$(SolutionDir)godot\godot.windows.editor.dev.x86_64.exe</LocalDebuggerCommand>
-    <LocalDebuggerCommandArguments>-e --path "$(SolutionDir)godot-project</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-e --path "$(SolutionDir)godot-project" --verbose</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='GD_debug|x64'">
     <LocalDebuggerCommand>$(SolutionDir)godot\godot.windows.editor.x86_64.exe</LocalDebuggerCommand>
     <LocalDebuggerCommandArguments>-e --path "$(SolutionDir)godot-project</LocalDebuggerCommandArguments>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Cpp_test|x64'">
+    <LocalDebuggerCommand>
+    </LocalDebuggerCommand>
+    <LocalDebuggerCommandArguments>
+    </LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>
