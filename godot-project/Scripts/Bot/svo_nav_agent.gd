@@ -20,10 +20,19 @@ var svo : SvoNavmesh
 var path = []
 var current_target_index = 0
 var close_enough_radius = 0.125/2
-var max_speed = 0.35
-var arrival_threshold = 0.125*7  # Distance threshold for deceleration to start
-var max_acceleration = 9.81 * 0.7  # Maximum acceleration, 3G
-var max_deceleration = 9.81 * 0.5  # Maximum deceleration, 1G
+var max_speed = 1.25
+var arrival_threshold = 0.125*5		# Distance threshold for deceleration to start
+var max_acceleration = 9.81 * 1.0	# Maximum acceleration, 3G
+var max_deceleration = 9.81 * 0.5	# Maximum deceleration, 1G
+var max_torque: float
+var max_angular_speed = 36.0		# Degree/s
+var angular_acceleration = 12.0		# Degree/s^2
+
+var debugLabel1
+var debugLabel2
+var debugLabel3
+var debugLabel4
+var debugLabel5
 
 func _ready():
 	is_smooth = true
@@ -32,6 +41,16 @@ func _ready():
 	svo = $"../spider exp project/SvoNavmesh"
 	A_star_completed.connect(_on_A_star_completed)
 	Path_found.connect(_on_path_found)
+	
+	debugLabel1 = $"../SubViewportContainer/SubViewport/UI/VBoxContainerR/Label"
+	debugLabel2 = $"../SubViewportContainer/SubViewport/UI/VBoxContainerR/Label2"
+	debugLabel3 = $"../SubViewportContainer/SubViewport/UI/VBoxContainerR/Label3"
+	debugLabel4 = $"../SubViewportContainer/SubViewport/UI/VBoxContainerR/Label4"
+	debugLabel5 = $"../SubViewportContainer/SubViewport/UI/VBoxContainerR/Label5"
+	
+	max_torque = 9.81 * 3 * 0.3 * self.mass
+	max_angular_speed = deg_to_rad(max_angular_speed)
+	angular_acceleration = deg_to_rad(angular_acceleration)
 		
 func _physics_process(delta):
 	if is_physics_task_set:
@@ -40,6 +59,11 @@ func _physics_process(delta):
 func _exit_tree():
 	thread.wait_to_finish()
 
+func clamp_vector3(v: Vector3, max_length: float) -> Vector3:
+	if v.length() > max_length:
+		return v.normalized() * max_length
+	return v
+
 func _integrate_forces(state):
 	if path.size() > 0 and current_target_index < path.size():
 		var target = path[current_target_index]
@@ -47,37 +71,90 @@ func _integrate_forces(state):
 		var distance = to_target.length()
 
 		if distance < close_enough_radius:
-			current_target_index += 1	# 移向下一个目标点
+			current_target_index += 1
 			if current_target_index >= path.size():
 				print("Path completed!")
 				return
-		else:
-			to_target = to_target.normalized()
-			var target_speed = max_speed
-			if distance < arrival_threshold:
-				# 线性减速到0
-				target_speed = lerp(max_speed, max_speed/5, 1.0 - distance / arrival_threshold)
+		
+		to_target = to_target.normalized()
+	# rotate v1
+		#var forward = global_transform.basis.z.normalized()
+		#var cross_prod = forward.cross(to_target)
+		#var dot_prod = forward.dot(to_target)
+		#var q = Quaternion(cross_prod.x, cross_prod.y, cross_prod.z, 1.0 + dot_prod).normalized()
+		#var angle = 2 * acos(q.w)
+		#var axis = q.get_axis().normalized()
+		#if angle > 0.01:
+			#var torque = axis * angle * angle * state.step / 1500
+			#state.apply_torque_impulse(torque)
+			
+	# rotate v2
+		var forward_vector = global_transform.basis.z.normalized()
+		var rotation_axis = forward_vector.cross(to_target)
+		var dot_product = forward_vector.dot(to_target)
+		var angle_diff = acos(clamp(dot_product, -1.0, 1.0))
+		var angle_diff_degrees = rad_to_deg(angle_diff)
 
-			var desired_velocity = to_target * target_speed
-			var velocity_change = desired_velocity - state.linear_velocity
-			var impulse = velocity_change * mass / state.step	# 使用物理步长正规化冲量
+		var angular_velocity_magnitude = self.angular_velocity.length()
+		var desired_angular_velocity_change
 
-			# 根据是加速还是减速应用不同的限制
-			var current_speed = state.linear_velocity.length()
-			var impulse_magnitude = impulse.length()
-			if desired_velocity.length() > current_speed:
-				# 加速情况
-				var max_impulse = max_acceleration * mass * state.step
-				if impulse_magnitude > max_impulse:
-					impulse = impulse.normalized() * max_impulse
+		# a steering working on bugs
+		if angle_diff_degrees > 90.0:
+			desired_angular_velocity_change = rotation_axis.normalized() * angular_acceleration * state.step
+		elif angle_diff_degrees > 45.0:
+			var alignment_scale = angle_diff_degrees / 90.0
+			desired_angular_velocity_change = rotation_axis.normalized() * angular_acceleration * state.step
+			desired_angular_velocity_change *= alignment_scale
+		elif angle_diff_degrees > 0.15:
+			#debugLabel1.text = "angular_velocity_magnitude: " + str(angular_velocity_magnitude)
+			#debugLabel2.text = "angular_velocity_threshold: " + str(max_angular_speed * (angle_diff_degrees / 4.6))
+			if angular_velocity_magnitude > max_angular_speed * (angle_diff_degrees / 3):
+				#debugLabel4.text = "condition3"
+				var alignment_scale = angle_diff_degrees / 3
+				desired_angular_velocity_change = -self.angular_velocity.normalized() * angular_acceleration * alignment_scale * state.step
+				#print(desired_angular_velocity_change)
 			else:
-				# 减速情况
-				var max_impulse = max_deceleration * mass * state.step
-				if impulse_magnitude > max_impulse:
-					impulse = impulse.normalized() * max_impulse
+				#debugLabel4.text = "condition4"
+				#print(angle_diff_degrees / 20)
+				var alignment_scale = max(0.1, angle_diff_degrees/20)
+				desired_angular_velocity_change = rotation_axis.normalized() * angular_acceleration * alignment_scale * state.step
+		else:
+			#debugLabel4.text = "condition5"
+			desired_angular_velocity_change = Vector3(0,0,0)
+		#debugLabel3.text = "length: " + str(desired_angular_velocity_change.length())
 
-			# 应用冲量
-			state.apply_central_impulse(impulse)
+		var new_angular_velocity = self.angular_velocity + desired_angular_velocity_change
+
+		var torque_impulse = (new_angular_velocity - self.angular_velocity)
+		torque_impulse = clamp_vector3(torque_impulse, max_torque * state.step)
+		state.apply_torque_impulse(torque_impulse)
+		
+	# movement
+		var target_speed = max_speed
+		if distance < arrival_threshold:
+			# Linear deceleration to 0
+			target_speed = lerp(max_speed, max_speed/5, 1.0 - distance / arrival_threshold)
+
+		var desired_velocity = to_target * target_speed
+		var velocity_change = desired_velocity - state.linear_velocity
+		var impulse = velocity_change * mass / state.step	# Normalize impulses using the physics step size
+
+		# Different limits apply depending on whether you are accelerating or decelerating
+		var current_speed = state.linear_velocity.length()
+		var impulse_magnitude = impulse.length()
+		if desired_velocity.length() > current_speed:
+			# accelerating
+			var max_impulse = max_acceleration * mass * state.step
+			if impulse_magnitude > max_impulse:
+				impulse = impulse.normalized() * max_impulse
+		else:
+			# decelerating
+			var max_impulse = max_deceleration * mass * state.step
+			if impulse_magnitude > max_impulse:
+				impulse = impulse.normalized() * max_impulse
+
+		# apply impulses
+		state.apply_central_impulse(impulse)
 
 func _input(event):
 	# Receives key input

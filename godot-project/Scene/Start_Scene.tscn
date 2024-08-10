@@ -43,7 +43,6 @@ button_pressed = true
 text = "svo_debugMode"
 
 [node name="CenterContainer2" type="CenterContainer" parent="."]
-visible = false
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 1
 anchors_preset = -1
@@ -61,10 +60,18 @@ scale = Vector2(1.5, 1.5)
 pivot_offset = Vector2(75, 15.5)
 metadata/_edit_use_anchors_ = true
 
-[node name="Button2" type="Button" parent="CenterContainer2"]
+[node name="HBoxContainer" type="HBoxContainer" parent="CenterContainer2"]
+layout_mode = 2
+
+[node name="Button2" type="Button" parent="CenterContainer2/HBoxContainer"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
-text = "demo_scene_simplified"
+text = "SVO_demo_patrol"
+
+[node name="CheckButton" type="CheckButton" parent="CenterContainer2/HBoxContainer"]
+layout_mode = 2
+button_pressed = true
+text = "svo_debugMode"
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
 layout_mode = 0
@@ -82,15 +89,17 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 25
 text = "F: Find a new random path;    M: Find a new random path with coroutine thread; E: Console print path(if console is usable); 
 Mouse: Rotate camera;     Mouse right click(hold): Active camera rotate; 
-WASD: Move camera;     LShift: Accelerate;     LCtrl: Down Space: Up;     Esc: Back to menu"
+WASD: Move camera;     LShift: Accelerate;     LCtrl: Down Space: Up;     L: Head light switch;     Esc: Back to menu"
 
 [node name="Label2" type="Label" parent="MarginContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 25
 text = "
 NavAgent origin is at the top of Green Core Box;
-In debugMode it will take about 10s to load rendering Mesh;"
+In debugMode it will take about 10s to load rendering Mesh;
+Window stretch is not safe right now"
 
 [connection signal="pressed" from="CenterContainer/HBoxContainer/Button1" to="." method="_on_StartButton1_pressed"]
 [connection signal="pressed" from="CenterContainer/HBoxContainer/CheckButton" to="." method="_on_debugMode_changed"]
-[connection signal="pressed" from="CenterContainer2/Button2" to="." method="_on_StartButton2_pressed"]
+[connection signal="pressed" from="CenterContainer2/HBoxContainer/Button2" to="." method="_on_StartButton2_pressed"]
+[connection signal="pressed" from="CenterContainer2/HBoxContainer/CheckButton" to="." method="_on_debugMode_changed"]

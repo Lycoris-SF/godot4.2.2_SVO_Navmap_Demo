@@ -117,11 +117,11 @@ namespace godot {
 
         // structure
         void insert_svo_based_on_collision_shapes();
-        bool check_point_inside_mesh(Vector3 point, RID& space_rid);
-        bool check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size, RID& space_rid);
-        bool is_box_fully_inside_mesh(Vector3 position, float size, RID& space_rid);
-        void collect_collision_shapes(Node* node, RID& space_rid);
-        void traverse_svo_space_and_insert(OctreeNode* node, int depth, RID& space_rid);
+        bool check_point_inside_mesh(Vector3 point);
+        bool check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size);
+        bool is_box_fully_inside_mesh(Vector3 position, float size);
+        void collect_collision_shapes(Node* node);
+        void traverse_svo_space_and_insert(OctreeNode* node, int depth);
         Vector<Vector3> calculate_connector_points();
 
         // neighbors

@@ -23,6 +23,8 @@ GlobalValue="*res://Scripts/Scene/Global_Value.gd"
 
 window/size/viewport_width=1920
 window/size/viewport_height=980
+window/stretch/mode="viewport"
+window/stretch/aspect="expand"
 
 [editor_plugins]
 

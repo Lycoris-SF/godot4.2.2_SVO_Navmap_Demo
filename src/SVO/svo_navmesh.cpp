@@ -614,11 +614,10 @@ void SvoNavmesh::insert_svo_based_on_collision_shapes() {
     uint64_t begin = Time::get_singleton()->get_ticks_msec();
 
     Node* parent_node = get_parent();
-    RID space_rid = this->get_world_3d()->get_space();
     if (parent_node != nullptr) {
-        collect_collision_shapes(parent_node, space_rid);
+        collect_collision_shapes(parent_node);
     }
-    traverse_svo_space_and_insert(svo->root, 1, space_rid);
+    traverse_svo_space_and_insert(svo->root, 1);
 
     uint64_t end = Time::get_singleton()->get_ticks_msec();
     UtilityFunctions::print(vformat("insert svo nodes with %d milliseconds", end - begin));
@@ -627,10 +626,10 @@ void SvoNavmesh::insert_svo_based_on_collision_shapes() {
 /**
  Use Godot's physics engine to check if the point is inside CollisionShape3D.
  */
-bool SvoNavmesh::check_point_inside_mesh(Vector3 point, RID& space_rid) {
+bool SvoNavmesh::check_point_inside_mesh(Vector3 point) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
-    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(this->get_world_3d()->get_space());
     if (!space_state) {
         ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
         return false;
@@ -653,11 +652,9 @@ bool SvoNavmesh::check_point_inside_mesh(Vector3 point, RID& space_rid) {
     // 处理查询结果
     if (!results.is_empty()) {
         for (int i = 0; i < results.size(); ++i) {
-            Dictionary result = results[i];
             // Compare collider object RID
             // 对比 collider 对象RID
-            RID result_rid = result["rid"];
-            if (target_rids.has(result_rid)) {
+            if (target_rids.has(Dictionary(results[i])["rid"])) {
                 return true;
             }
         }
@@ -668,9 +665,9 @@ bool SvoNavmesh::check_point_inside_mesh(Vector3 point, RID& space_rid) {
 /**
  Use Godot's physics engine to check if the cube intersect CollisionShape3D.
  */
-bool SvoNavmesh::check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size, RID& space_rid) {
+bool SvoNavmesh::check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size) {
     // Get the PhysicsDirectSpaceState3D instance
-    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(space_rid);
+    PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(this->get_world_3d()->get_space());
     if (!space_state) {
         ERR_PRINT_ED("Failed to get PhysicsDirectSpaceState3D instance");
         return false;
@@ -696,16 +693,14 @@ bool SvoNavmesh::check_box_intersect_mesh(Vector3 position, Quaternion rotation,
     // Process the query results
     if (!results.is_empty()) {
         for (int i = 0; i < results.size(); ++i) {
-            Dictionary result = results[i];
-            RID result_rid = result["rid"];
-            if (target_rids.has(result_rid)) {
+            if (target_rids.has(Dictionary(results[i])["rid"])) {
                 return true;
             }
         }
     }
     return false;
 }
-bool SvoNavmesh::is_box_fully_inside_mesh(Vector3 position, float size, RID& space_rid) {
+bool SvoNavmesh::is_box_fully_inside_mesh(Vector3 position, float size) {
     Vector3 half_size = Vector3(size, size, size) * 0.5;
 
     // Sample points: 8 vertices + 6 face centers + 12 edge midpoints + 1 center = 27 points
@@ -743,7 +738,7 @@ bool SvoNavmesh::is_box_fully_inside_mesh(Vector3 position, float size, RID& spa
     };
 
     for (int i = 0; i < 27; i++) {
-        if (!check_point_inside_mesh(sample_points[i], space_rid)) {
+        if (!check_point_inside_mesh(sample_points[i])) {
             return false;
         }
     }
@@ -754,7 +749,7 @@ bool SvoNavmesh::is_box_fully_inside_mesh(Vector3 position, float size, RID& spa
 /**
  Collect CollisionShape3D from PhysicsBody3D.
  */
-void SvoNavmesh::collect_collision_shapes(Node* node, RID& space_rid) {
+void SvoNavmesh::collect_collision_shapes(Node* node) {
     if (!node) return;
 
     // Traverse each node in the subtree
@@ -772,31 +767,28 @@ void SvoNavmesh::collect_collision_shapes(Node* node, RID& space_rid) {
                 Node* subChild = physics_body->get_child(j);
                 CollisionShape3D* collision_shape = Object::cast_to<CollisionShape3D>(subChild);
                 if (collision_shape && !collision_shape->is_disabled()) {
-                    RID target_rid = physics_body->get_rid();
-                    target_rids.push_back(target_rid);
-                    //Vector<Vector3> points = get_shape_points(collision_shape, get_global_position(), voxelSize, svo->calActualVoxelSize(svo->maxDepth) / 2, space_rid, target_rid);
-                    //build_svo(svo, points);
+                    target_rids.push_back(physics_body->get_rid());
                 }
             }
         }
 
         // Recursively collect collision shapes of child nodes
         // 递归地收集子节点的碰撞形状
-        collect_collision_shapes(child, space_rid);
+        collect_collision_shapes(child);
     }
 }
 
 /**
  Intersect svo nodes with collider recursively
  */
-void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth, RID& space_rid) {
+void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth) {
     if (depth > maxDepth) {
         return;
     }
 
     // TODO: Start working on this when ready for real Sparse
     bool temp = false;
-    if (temp && is_box_fully_inside_mesh(gridToWorld(node->center), node->voxel->size, space_rid)) {
+    if (temp && is_box_fully_inside_mesh(gridToWorld(node->center), node->voxel->size)) {
         if (depth == maxDepth) {
             node->voxel->state = VS_SOLID;
             node->isLeaf = true;
@@ -808,14 +800,14 @@ void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth, RID&
             }
 
             for (int i = 0; i < 8; ++i) {
-                traverse_svo_space_and_insert(node->children[i], depth + 1, space_rid);
+                traverse_svo_space_and_insert(node->children[i], depth + 1);
             }
             svo->evaluate_homogeneity(node);
         }
         return;
     }
 
-    if (check_box_intersect_mesh(gridToWorld(node->center), get_global_rotation(), node->voxel->size, space_rid)) {
+    if (check_box_intersect_mesh(gridToWorld(node->center), get_global_rotation(), node->voxel->size)) {
         if (depth == maxDepth) {
             node->voxel->state = VS_SOLID;
             node->isLeaf = true;
@@ -827,7 +819,7 @@ void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth, RID&
             }
 
             for (int i = 0; i < 8; ++i) {
-                traverse_svo_space_and_insert(node->children[i], depth + 1, space_rid);
+                traverse_svo_space_and_insert(node->children[i], depth + 1);
             }
             svo->evaluate_homogeneity(node);
         }
@@ -940,6 +932,7 @@ void SvoNavmesh::_enter_tree()
 }
 void SvoNavmesh::_exit_tree(){
     clear_static_material();
+    target_rids.clear();
 }
 
 /**
@@ -1322,11 +1315,7 @@ bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Ve
     // 处理查询结果
     if (!results.is_empty()) {
         for (int i = 0; i < results.size(); ++i) {
-            Dictionary result = results[i];
-            // Compare collider object RID
-            // 对比 collider 对象RID
-            RID result_rid = result["rid"];
-            if (target_rids.has(result_rid)) {
+            if (target_rids.has(Dictionary(results[i])["rid"])) {
                 return false;
             }
         }
@@ -1362,8 +1351,7 @@ bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3
     // Process the query results
     // 处理查询结果
     if (!result.is_empty()) {
-        RID result_rid = result["rid"];
-        if (target_rids.has(result_rid)) {
+        if (target_rids.has(result["rid"])) {
             return false;
         }
     }
@@ -1371,7 +1359,7 @@ bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3
 }
 
 float calculateSegmentLength(float rootVoxelSize, float minVoxelSize) {
-    float phiInverse = 0.61803398875/2;
+    float phiInverse = 0.61803398875 / 2;
     float segment_length = minVoxelSize + (rootVoxelSize - minVoxelSize) * phiInverse;
     return segment_length;
 }
@@ -1595,18 +1583,6 @@ void SvoNavmesh::smooth_path_string_pulling_v3(float agent_radius) {
         bool can_jump=false;
         while (j < subdivided_path.size()-1) {
             if (agent_radius > 0.0f) {
-                can_jump = can_travel_directly_with_cylinder(subdivided_path[j], subdivided_path[subdivided_path.size() - 1], agent_radius);
-            }
-            else {
-                can_jump = can_travel_directly_with_ray(subdivided_path[j], subdivided_path[subdivided_path.size() - 1]);
-            }
-            if (can_jump) {
-                smooth_path.push_back(subdivided_path[j]);
-                smooth_path.push_back(subdivided_path[subdivided_path.size() - 1]);
-                break;
-            }
-
-            if (agent_radius > 0.0f) {
                 can_traverse = can_travel_directly_with_cylinder(subdivided_path[i], subdivided_path[j], agent_radius);
             }
             else {
@@ -1614,6 +1590,19 @@ void SvoNavmesh::smooth_path_string_pulling_v3(float agent_radius) {
             }
             if (!can_traverse) {
                 break;
+            }
+            else {
+                if (agent_radius > 0.0f) {
+                    can_jump = can_travel_directly_with_cylinder(subdivided_path[j], subdivided_path[subdivided_path.size() - 1], agent_radius);
+                }
+                else {
+                    can_jump = can_travel_directly_with_ray(subdivided_path[j], subdivided_path[subdivided_path.size() - 1]);
+                }
+                if (can_jump) {
+                    smooth_path.push_back(subdivided_path[j]);
+                    smooth_path.push_back(subdivided_path[subdivided_path.size() - 1]);
+                    break;
+                }
             }
             ++j;
         }
@@ -1675,7 +1664,6 @@ Array SvoNavmesh::find_path_v1(const Vector3 start, const Vector3 end, float age
     // check direct path
     Vector3 start_grid = worldToGrid(start);
     Vector3 end_grid = worldToGrid(end);
-    RID space_rid = this->get_world_3d()->get_space();
     bool can_traverse;
     if (agent_r > 0.0f) {
         can_traverse = can_travel_directly_with_cylinder(start_grid, end_grid, agent_r);
@@ -1944,6 +1932,7 @@ void SvoNavmesh::init_debug_path(float agent_r) {
         sphere->set_mesh(sphereMesh);
         sphere->set_material_override(i < exist_path.size() - 1 ? debugPathMaterialY : debugPathMaterialR);
         sphere->set_transform(Transform3D(Basis(), exist_path[i]));
+        sphere->set_visible(show_path);
         add_child(sphere);
         path_pool.push_back(sphere);
 
@@ -1953,6 +1942,7 @@ void SvoNavmesh::init_debug_path(float agent_r) {
             MeshInstance3D* cylinder = memnew(MeshInstance3D);
             cylinder->set_mesh(cylinderMesh);
             cylinder->set_material_override(debugPathMaterialB);
+            cylinder->set_visible(show_path);
 
             Vector3 direction = (exist_path[i + 1] - exist_path[i]);
             if (!direction.is_zero_approx()) {

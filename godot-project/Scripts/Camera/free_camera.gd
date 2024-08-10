@@ -6,6 +6,7 @@ const ALT_MULTIPLIER = 1.0 / SHIFT_MULTIPLIER
 
 
 @export_range(0.0, 1.0) var sensitivity: float = 0.25
+@export var spotlight : SpotLight3D
 
 # Mouse state
 var _mouse_position = Vector2(0.0, 0.0)
@@ -45,6 +46,9 @@ func _input(event):
 
 	# Receives key input
 	if event is InputEventKey:
+		if event.pressed:
+			if event.keycode == KEY_L:
+				spotlight.visible = not spotlight.visible
 		match event.keycode:
 			KEY_W:
 				_w = event.pressed
