@@ -263,8 +263,8 @@
   <ItemGroup>
     <ClCompile Include="src\register\register_types.cpp" />
     <ClCompile Include="src\SVO\svo_connector.cpp" />
-    <ClCompile Include="src\SVO\svo_navmesh.cpp" />
-    <ClCompile Include="src\SVO\svo_navmesh_manager.cpp" />
+    <ClCompile Include="src\SVO\svo_navmap.cpp" />
+    <ClCompile Include="src\SVO\svo_navmap_manager.cpp" />
     <ClCompile Include="src\SVO\svo_resource.cpp" />
     <ClCompile Include="src\SVO\svo_structure.cpp" />
     <ClCompile Include="src\Test\test_svo.cpp" />
@@ -273,8 +273,8 @@
     <ClInclude Include="resource.h" />
     <ClInclude Include="src\register\register_types.h" />
     <ClInclude Include="src\SVO\svo_connector.h" />
-    <ClInclude Include="src\SVO\svo_navmesh.h" />
-    <ClInclude Include="src\SVO\svo_navmesh_manager.h" />
+    <ClInclude Include="src\SVO\svo_navmap.h" />
+    <ClInclude Include="src\SVO\svo_navmap_manager.h" />
     <ClInclude Include="src\SVO\svo_resource.h" />
     <ClInclude Include="src\SVO\svo_structure.h" />
     <ClInclude Include="src\Test\test_svo.h" />

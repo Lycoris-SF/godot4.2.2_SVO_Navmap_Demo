@@ -1,5 +1,5 @@
 @tool
-extends SvoNavmesh
+extends SvoNavmap
 
 func _init():
 	if self.uuid == "":

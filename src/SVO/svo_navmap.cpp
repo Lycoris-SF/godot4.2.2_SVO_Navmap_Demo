@@ -1,4 +1,4 @@
-#include "svo_navmesh.h"
+#include "svo_navmap.h"
 
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/variant/utility_functions.hpp>
@@ -28,84 +28,84 @@ void SparseVoxelOctree::_bind_methods()
 {
 
 }
-void SvoNavmesh::_bind_methods() {
-    ClassDB::bind_method(D_METHOD("insert_voxel", "position"), &SvoNavmesh::insert_voxel);
-    ClassDB::bind_method(D_METHOD("query_voxel", "position"), &SvoNavmesh::query_voxel);
-    ClassDB::bind_method(D_METHOD("check_voxel_with_id", "id"), &SvoNavmesh::check_voxel_with_id);
-    ClassDB::bind_method(D_METHOD("update_voxel", "position", "isSolid"), &SvoNavmesh::update_voxel);
+void SvoNavmap::_bind_methods() {
+    ClassDB::bind_method(D_METHOD("insert_voxel", "position"), &SvoNavmap::insert_voxel);
+    ClassDB::bind_method(D_METHOD("query_voxel", "position"), &SvoNavmap::query_voxel);
+    ClassDB::bind_method(D_METHOD("check_voxel_with_id", "id"), &SvoNavmap::check_voxel_with_id);
+    ClassDB::bind_method(D_METHOD("update_voxel", "position", "isSolid"), &SvoNavmap::update_voxel);
 
-    ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmesh::get_info);
-    ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmesh::set_info);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "testdouble"), "set_info", "get_info");
-    ClassDB::bind_method(D_METHOD("get_uuid"), &SvoNavmesh::get_uuid);
-    ClassDB::bind_method(D_METHOD("set_uuid", "p_uuid"), &SvoNavmesh::set_uuid);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::STRING, "uuid"), "set_uuid", "get_uuid");
-    ClassDB::bind_method(D_METHOD("get_adjacent_list"), &SvoNavmesh::get_adjacent_list);
-    ClassDB::bind_method(D_METHOD("set_adjacent_list", "data"), &SvoNavmesh::set_adjacent_list);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::ARRAY, "adjacent_uuids", PROPERTY_HINT_ARRAY_TYPE, "String"), "set_adjacent_list", "get_adjacent_list");
+    ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmap::get_info);
+    ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmap::set_info);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::FLOAT, "testdouble"), "set_info", "get_info");
+    ClassDB::bind_method(D_METHOD("get_uuid"), &SvoNavmap::get_uuid);
+    ClassDB::bind_method(D_METHOD("set_uuid", "p_uuid"), &SvoNavmap::set_uuid);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::STRING, "uuid"), "set_uuid", "get_uuid");
+    ClassDB::bind_method(D_METHOD("get_adjacent_list"), &SvoNavmap::get_adjacent_list);
+    ClassDB::bind_method(D_METHOD("set_adjacent_list", "data"), &SvoNavmap::set_adjacent_list);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::ARRAY, "adjacent_uuids", PROPERTY_HINT_ARRAY_TYPE, "String"), "set_adjacent_list", "get_adjacent_list");
 
-    ClassDB::bind_method(D_METHOD("get_debug_mode"), &SvoNavmesh::get_debug_mode);
-    ClassDB::bind_method(D_METHOD("set_debug_mode", "debug_mode"), &SvoNavmesh::set_debug_mode);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "debug_mode"), "set_debug_mode", "get_debug_mode");
-    ClassDB::bind_method(D_METHOD("get_collision_layer"), &SvoNavmesh::get_collision_layer);
-    ClassDB::bind_method(D_METHOD("set_collision_layer", "layer"), &SvoNavmesh::set_collision_layer);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "collision_layer"), "set_collision_layer", "get_collision_layer");
+    ClassDB::bind_method(D_METHOD("get_debug_mode"), &SvoNavmap::get_debug_mode);
+    ClassDB::bind_method(D_METHOD("set_debug_mode", "debug_mode"), &SvoNavmap::set_debug_mode);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::BOOL, "debug_mode"), "set_debug_mode", "get_debug_mode");
+    ClassDB::bind_method(D_METHOD("get_collision_layer"), &SvoNavmap::get_collision_layer);
+    ClassDB::bind_method(D_METHOD("set_collision_layer", "layer"), &SvoNavmap::set_collision_layer);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::INT, "collision_layer"), "set_collision_layer", "get_collision_layer");
     
-    ClassDB::bind_method(D_METHOD("get_voxel_size"), &SvoNavmesh::get_voxel_size);
-    ClassDB::bind_method(D_METHOD("set_voxel_size", "size"), &SvoNavmesh::set_voxel_size);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "rootVoxelSize"), "set_voxel_size", "get_voxel_size");
+    ClassDB::bind_method(D_METHOD("get_voxel_size"), &SvoNavmap::get_voxel_size);
+    ClassDB::bind_method(D_METHOD("set_voxel_size", "size"), &SvoNavmap::set_voxel_size);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::FLOAT, "rootVoxelSize"), "set_voxel_size", "get_voxel_size");
 
-    ClassDB::bind_method(D_METHOD("get_max_depth"), &SvoNavmesh::get_max_depth);
-    ClassDB::bind_method(D_METHOD("set_max_depth", "depth"), &SvoNavmesh::set_max_depth);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "max_depth"), "set_max_depth", "get_max_depth");
+    ClassDB::bind_method(D_METHOD("get_max_depth"), &SvoNavmap::get_max_depth);
+    ClassDB::bind_method(D_METHOD("set_max_depth", "depth"), &SvoNavmap::set_max_depth);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::INT, "max_depth"), "set_max_depth", "get_max_depth");
 
     // debug draw property
-    ClassDB::bind_method(D_METHOD("get_DR_min_depth"), &SvoNavmesh::get_DR_min_depth);
-    ClassDB::bind_method(D_METHOD("set_DR_min_depth", "depth"), &SvoNavmesh::set_DR_min_depth);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "DrawRef_minDepth"), "set_DR_min_depth", "get_DR_min_depth");
-    ClassDB::bind_method(D_METHOD("get_DR_max_depth"), &SvoNavmesh::get_DR_max_depth);
-    ClassDB::bind_method(D_METHOD("set_DR_max_depth", "depth"), &SvoNavmesh::set_DR_max_depth);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::INT, "DrawRef_maxDepth"), "set_DR_max_depth", "get_DR_max_depth");
-    ClassDB::bind_method(D_METHOD("get_show_empty"), &SvoNavmesh::get_show_empty);
-    ClassDB::bind_method(D_METHOD("set_show_empty", "show_empty"), &SvoNavmesh::set_show_empty);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "show_empty"), "set_show_empty", "get_show_empty");
-    ClassDB::bind_method(D_METHOD("get_show_path"), &SvoNavmesh::get_show_path);
-    ClassDB::bind_method(D_METHOD("set_show_path", "show_path"), &SvoNavmesh::set_show_path);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::BOOL, "show_path"), "set_show_path", "get_show_path");
-    ClassDB::bind_method(D_METHOD("get_debug_path_scale"), &SvoNavmesh::get_debug_path_scale);
-    ClassDB::bind_method(D_METHOD("set_debug_path_scale", "scale"), &SvoNavmesh::set_debug_path_scale);
-    ClassDB::add_property("SvoNavmesh", PropertyInfo(Variant::FLOAT, "debug_path_scale"), "set_debug_path_scale", "get_debug_path_scale");
-    ClassDB::bind_method(D_METHOD("manual_set_node_ready"), &SvoNavmesh::manual_set_node_ready);
+    ClassDB::bind_method(D_METHOD("get_DR_min_depth"), &SvoNavmap::get_DR_min_depth);
+    ClassDB::bind_method(D_METHOD("set_DR_min_depth", "depth"), &SvoNavmap::set_DR_min_depth);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::INT, "DrawRef_minDepth"), "set_DR_min_depth", "get_DR_min_depth");
+    ClassDB::bind_method(D_METHOD("get_DR_max_depth"), &SvoNavmap::get_DR_max_depth);
+    ClassDB::bind_method(D_METHOD("set_DR_max_depth", "depth"), &SvoNavmap::set_DR_max_depth);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::INT, "DrawRef_maxDepth"), "set_DR_max_depth", "get_DR_max_depth");
+    ClassDB::bind_method(D_METHOD("get_show_empty"), &SvoNavmap::get_show_empty);
+    ClassDB::bind_method(D_METHOD("set_show_empty", "show_empty"), &SvoNavmap::set_show_empty);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::BOOL, "show_empty"), "set_show_empty", "get_show_empty");
+    ClassDB::bind_method(D_METHOD("get_show_path"), &SvoNavmap::get_show_path);
+    ClassDB::bind_method(D_METHOD("set_show_path", "show_path"), &SvoNavmap::set_show_path);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::BOOL, "show_path"), "set_show_path", "get_show_path");
+    ClassDB::bind_method(D_METHOD("get_debug_path_scale"), &SvoNavmap::get_debug_path_scale);
+    ClassDB::bind_method(D_METHOD("set_debug_path_scale", "scale"), &SvoNavmap::set_debug_path_scale);
+    ClassDB::add_property("SvoNavmap", PropertyInfo(Variant::FLOAT, "debug_path_scale"), "set_debug_path_scale", "get_debug_path_scale");
+    ClassDB::bind_method(D_METHOD("manual_set_node_ready"), &SvoNavmap::manual_set_node_ready);
 
     // structure
-    ClassDB::bind_method(D_METHOD("rebuild_svo"), &SvoNavmesh::rebuild_svo);
-    ClassDB::bind_method(D_METHOD("refresh_svo"), &SvoNavmesh::refresh_svo);
-    ClassDB::bind_method(D_METHOD("clear_svo"), &SvoNavmesh::clear_svo);
-    ClassDB::bind_method(D_METHOD("generate_connector"), &SvoNavmesh::generate_connector);
-    ClassDB::bind_method(D_METHOD("clear_connector"), &SvoNavmesh::clear_connector);
+    ClassDB::bind_method(D_METHOD("rebuild_svo"), &SvoNavmap::rebuild_svo);
+    ClassDB::bind_method(D_METHOD("refresh_svo"), &SvoNavmap::refresh_svo);
+    ClassDB::bind_method(D_METHOD("clear_svo"), &SvoNavmap::clear_svo);
+    ClassDB::bind_method(D_METHOD("generate_connector"), &SvoNavmap::generate_connector);
+    ClassDB::bind_method(D_METHOD("clear_connector"), &SvoNavmap::clear_connector);
 
     // generate svo from collider
-    ClassDB::bind_method(D_METHOD("insert_svo_based_on_collision_shapes"), &SvoNavmesh::insert_svo_based_on_collision_shapes);
+    ClassDB::bind_method(D_METHOD("insert_svo_based_on_collision_shapes"), &SvoNavmap::insert_svo_based_on_collision_shapes);
 
     // path finding
-    ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmesh::find_path_v2);
+    ClassDB::bind_method(D_METHOD("find_path", "start", "end", "agent_r", "is_smooth"), &SvoNavmap::find_path_v2);
     // path finding multi thread
-    ClassDB::bind_method(D_METHOD("direct_path_check", "start", "end", "agent_r"), &SvoNavmesh::direct_path_check);
-    ClassDB::bind_method(D_METHOD("get_last_path_result"), &SvoNavmesh::get_last_path_result);
-    ClassDB::bind_method(D_METHOD("find_raw_path", "start", "end", "agent_r"), &SvoNavmesh::find_raw_path_v2);
-    ClassDB::bind_method(D_METHOD("smooth_path", "agent_r"), &SvoNavmesh::smooth_path_string_pulling_v3);
-    ClassDB::bind_method(D_METHOD("init_debug_path", "agent_r"), &SvoNavmesh::init_debug_path);
-    ClassDB::bind_method(D_METHOD("transfer_path_result"), &SvoNavmesh::transfer_path_result);
+    ClassDB::bind_method(D_METHOD("direct_path_check", "start", "end", "agent_r"), &SvoNavmap::direct_path_check);
+    ClassDB::bind_method(D_METHOD("get_last_path_result"), &SvoNavmap::get_last_path_result);
+    ClassDB::bind_method(D_METHOD("find_raw_path", "start", "end", "agent_r"), &SvoNavmap::find_raw_path_v2);
+    ClassDB::bind_method(D_METHOD("smooth_path", "agent_r"), &SvoNavmap::smooth_path_string_pulling_v3);
+    ClassDB::bind_method(D_METHOD("init_debug_path", "agent_r"), &SvoNavmap::init_debug_path);
+    ClassDB::bind_method(D_METHOD("transfer_path_result"), &SvoNavmap::transfer_path_result);
 }
 
-SvoNavmesh::SvoNavmesh(): 
+SvoNavmap::SvoNavmap(): 
     maxDepth(3), rootVoxelSize(1.0f), minVoxelSize(0.25f), testdouble(1.14f), debug_mode(false), collision_layer(5),
     debug_path_scale(1.0f), node_ready(false), DrawRef_minDepth(1), DrawRef_maxDepth(3), show_empty(true), 
     show_path(true), debugChecked_node(nullptr), outer_connector(), inner_connector()
 {
     svo = memnew(SparseVoxelOctree);
 }
-SvoNavmesh::~SvoNavmesh() {
+SvoNavmap::~SvoNavmap() {
     //call_deferred("reset_pool");
     if(svo) memdelete(svo);
     svo = nullptr;
@@ -153,7 +153,7 @@ static const int childDirectionMap[6][4] = {
  * @param world_position: The position in world coordinates.
  * @returns The position in local coordinates of svo.
  */
-Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
+Vector3 SvoNavmap::worldToGrid(Vector3 world_position) {
     Transform3D global_transform = get_global_transform();
 
     // Remove scaling: Normalize the columns of the rotation matrix
@@ -170,7 +170,7 @@ Vector3 SvoNavmesh::worldToGrid(Vector3 world_position) {
     Vector3 local_position = global_transform.xform_inv(world_position); // Global to local; 全局到局部
     return local_position; // Convert to grid coordinates; 转换到网格坐标
 }
-Vector3 SvoNavmesh::gridToWorld(Vector3 grid_position) {
+Vector3 SvoNavmap::gridToWorld(Vector3 grid_position) {
     Transform3D global_transform = get_global_transform();
 
     // Remove scaling: Normalize the columns of the rotation matrix
@@ -207,7 +207,7 @@ uint32_t create_collision_mask(const Vector<int>& layers) {
  *
  * @param world_position: The world position where the voxel is to be inserted.
  */
-void SvoNavmesh::insert_voxel(Vector3 world_position) {
+void SvoNavmap::insert_voxel(Vector3 world_position) {
     Vector3 grid_position = worldToGrid(world_position);
 
     // Check if the grid coordinates are valid (i.e. within the root node range)
@@ -231,7 +231,7 @@ void SvoNavmesh::insert_voxel(Vector3 world_position) {
  *
  * @param world_position: The world position where the voxel is to be queried.
  */
-bool SvoNavmesh::query_voxel(Vector3 world_position) {
+bool SvoNavmap::query_voxel(Vector3 world_position) {
     Vector3 grid_position = worldToGrid(world_position);
 
     // Check if the grid coordinates are valid (i.e. within the root node range)
@@ -249,7 +249,7 @@ bool SvoNavmesh::query_voxel(Vector3 world_position) {
  *
  * @param id: The id of the voxel in an SVO. Note that 2 voxel in 2 SVO could have same id.
  */
-void SvoNavmesh::check_voxel_with_id(String id) {
+void SvoNavmap::check_voxel_with_id(String id) {
     // 检查路径ID是否只有一个字符且为'0'
     if (id.length() == 1 && id[0] == '0') {
         UtilityFunctions::print("Checking root node voxel information.");
@@ -296,7 +296,7 @@ void SvoNavmesh::check_voxel_with_id(String id) {
     }
 }
 //临时弃用; Temp Abandon
-void SvoNavmesh::update_voxel(Vector3 world_position, bool isSolid) {
+void SvoNavmap::update_voxel(Vector3 world_position, bool isSolid) {
     Vector3 grid_position = worldToGrid(world_position);
 
     WARN_PRINT("Update is not ready for now.");
@@ -314,20 +314,20 @@ void SvoNavmesh::update_voxel(Vector3 world_position, bool isSolid) {
     svo->update(grid_position, isSolid);
 }
 
-float SvoNavmesh::get_voxel_size() const {
+float SvoNavmap::get_voxel_size() const {
     return rootVoxelSize;
 }
-void SvoNavmesh::set_voxel_size(float size) {
+void SvoNavmap::set_voxel_size(float size) {
     if (rootVoxelSize != size) {
         rootVoxelSize = size;
         minVoxelSize = svo->calActualVoxelSize(maxDepth);
     }
 }
 
-int SvoNavmesh::get_max_depth() const {
+int SvoNavmap::get_max_depth() const {
     return maxDepth;
 }
-void SvoNavmesh::set_max_depth(int depth) {
+void SvoNavmap::set_max_depth(int depth) {
     if (!globalDepthCheck(depth)) {
         WARN_PRINT("Depth out of setting range.(1-9)");
         return;
@@ -338,22 +338,22 @@ void SvoNavmesh::set_max_depth(int depth) {
     }
 }
 
-int SvoNavmesh::get_collision_layer() const {
+int SvoNavmap::get_collision_layer() const {
     return collision_layer;
 }
-void SvoNavmesh::set_collision_layer(int layer) {
+void SvoNavmap::set_collision_layer(int layer) {
     collision_layer = layer;
 }
 
-void SvoNavmesh::manual_set_node_ready() {
+void SvoNavmap::manual_set_node_ready() {
     node_ready = true;
 }
 
 // <debug draw set/get>
-bool SvoNavmesh::get_debug_mode() const {
+bool SvoNavmap::get_debug_mode() const {
     return debug_mode;
 }
-void SvoNavmesh::set_debug_mode(bool debug_mode) {
+void SvoNavmap::set_debug_mode(bool debug_mode) {
     this->debug_mode = debug_mode;
     // TODO: when ready for demo game,
     //       this needs to be removed,
@@ -370,10 +370,10 @@ void SvoNavmesh::set_debug_mode(bool debug_mode) {
         }
     }
 }
-int SvoNavmesh::get_DR_min_depth() const {
+int SvoNavmap::get_DR_min_depth() const {
     return DrawRef_minDepth;
 }
-void SvoNavmesh::set_DR_min_depth(int depth) {
+void SvoNavmap::set_DR_min_depth(int depth) {
     if (!globalDepthCheck(depth)) {
         WARN_PRINT("Depth out of setting range.(1-9)");
         return;
@@ -384,10 +384,10 @@ void SvoNavmesh::set_DR_min_depth(int depth) {
     }
     DrawRef_minDepth = depth;
 }
-int SvoNavmesh::get_DR_max_depth() const {
+int SvoNavmap::get_DR_max_depth() const {
     return DrawRef_maxDepth;
 }
-void SvoNavmesh::set_DR_max_depth(int depth) {
+void SvoNavmap::set_DR_max_depth(int depth) {
     if (!globalDepthCheck(depth)) {
         WARN_PRINT("Depth out of setting range.(1-9)");
         return;
@@ -398,23 +398,23 @@ void SvoNavmesh::set_DR_max_depth(int depth) {
     }
     DrawRef_maxDepth = depth;
 }
-bool SvoNavmesh::get_show_empty() const {
+bool SvoNavmap::get_show_empty() const {
     return show_empty;
 }
-void SvoNavmesh::set_show_empty(bool show_empty) {
+void SvoNavmap::set_show_empty(bool show_empty) {
     this->show_empty = show_empty;
 }
-bool SvoNavmesh::get_show_path() const {
+bool SvoNavmap::get_show_path() const {
     return show_path;
 }
-void SvoNavmesh::set_show_path(bool show_path) {
+void SvoNavmap::set_show_path(bool show_path) {
     this->show_path = show_path;
     draw_path_switch_visible(show_path);
 }
-float SvoNavmesh::get_debug_path_scale() const {
+float SvoNavmap::get_debug_path_scale() const {
     return debug_path_scale;
 }
-void SvoNavmesh::set_debug_path_scale(float scale)
+void SvoNavmap::set_debug_path_scale(float scale)
 {
     if (scale<0 || scale>1) {
         WARN_PRINT("Scale out of setting range.(0-1)");
@@ -424,14 +424,14 @@ void SvoNavmesh::set_debug_path_scale(float scale)
 }
 // </debug draw set/get>
 
-Array SvoNavmesh::get_last_path_result() {
+Array SvoNavmap::get_last_path_result() {
     return path_result;
 }
 
 /**
  Clear the svo and total rebuild base on collision shapes.
  */
-void SvoNavmesh::rebuild_svo() {
+void SvoNavmap::rebuild_svo() {
     svo->maxDepth = maxDepth;
     svo->voxelSize = rootVoxelSize;
     svo->last_transform = get_global_transform();
@@ -459,7 +459,7 @@ void SvoNavmesh::rebuild_svo() {
 /**
  Calculate connector ponit based on connected faces.
  */
-Vector<Vector3> SvoNavmesh::calculate_connector_points() {
+Vector<Vector3> SvoNavmap::calculate_connector_points() {
     Transform3D global_transform = get_global_transform();
     float halfSize = rootVoxelSize / 2.0;
     Vector<Vector3> points;
@@ -515,7 +515,7 @@ Vector<Vector3> SvoNavmesh::calculate_connector_points() {
 /**
  Generate connectors based on physics.
  */
-void SvoNavmesh::generate_connector() {
+void SvoNavmap::generate_connector() {
     // Clear old debug children
     clear_connector();
 
@@ -532,7 +532,7 @@ void SvoNavmesh::generate_connector() {
 /**
  Clear connectors.
  */
-void SvoNavmesh::clear_connector() {
+void SvoNavmap::clear_connector() {
     // Clear old debug children
     for (int i = 0; i < outer_connector.size(); ++i) {
         remove_child(outer_connector[i]);
@@ -549,7 +549,7 @@ void SvoNavmesh::clear_connector() {
 /**
  Refresh the svo base on svo setting changes.
  */
-void SvoNavmesh::refresh_svo() {
+void SvoNavmap::refresh_svo() {
     // FIXME: expand_node() and compress_node() are doing
     // dynamic changes to svo nodes, which needs to call init_debug_mesh
     // to have proper rendering. And right now it's gonna face 
@@ -589,7 +589,7 @@ void SvoNavmesh::refresh_svo() {
  *
  * @param clear_setting: whether also clear svo setting.
  */
-void SvoNavmesh::clear_svo(bool clear_setting) {
+void SvoNavmap::clear_svo(bool clear_setting) {
     if (debug_mode) reset_pool_v3();
     if (clear_setting) {
         // clear svo and settings
@@ -610,7 +610,7 @@ void SvoNavmesh::clear_svo(bool clear_setting) {
 /**
  Generate svo from collider.
  */
-void SvoNavmesh::insert_svo_based_on_collision_shapes() {
+void SvoNavmap::insert_svo_based_on_collision_shapes() {
     uint64_t begin = Time::get_singleton()->get_ticks_msec();
 
     Node* parent_node = get_parent();
@@ -626,7 +626,7 @@ void SvoNavmesh::insert_svo_based_on_collision_shapes() {
 /**
  Use Godot's physics engine to check if the point is inside CollisionShape3D.
  */
-bool SvoNavmesh::check_point_inside_mesh(Vector3 point) {
+bool SvoNavmap::check_point_inside_mesh(Vector3 point) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
     PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(this->get_world_3d()->get_space());
@@ -665,7 +665,7 @@ bool SvoNavmesh::check_point_inside_mesh(Vector3 point) {
 /**
  Use Godot's physics engine to check if the cube intersect CollisionShape3D.
  */
-bool SvoNavmesh::check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size) {
+bool SvoNavmap::check_box_intersect_mesh(Vector3 position, Quaternion rotation, float size) {
     // Get the PhysicsDirectSpaceState3D instance
     PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(this->get_world_3d()->get_space());
     if (!space_state) {
@@ -700,7 +700,7 @@ bool SvoNavmesh::check_box_intersect_mesh(Vector3 position, Quaternion rotation,
     }
     return false;
 }
-bool SvoNavmesh::is_box_fully_inside_mesh(Vector3 position, float size) {
+bool SvoNavmap::is_box_fully_inside_mesh(Vector3 position, float size) {
     Vector3 half_size = Vector3(size, size, size) * 0.5;
 
     // Sample points: 8 vertices + 6 face centers + 12 edge midpoints + 1 center = 27 points
@@ -749,7 +749,7 @@ bool SvoNavmesh::is_box_fully_inside_mesh(Vector3 position, float size) {
 /**
  Collect CollisionShape3D from PhysicsBody3D.
  */
-void SvoNavmesh::collect_collision_shapes(Node* node) {
+void SvoNavmap::collect_collision_shapes(Node* node) {
     if (!node) return;
 
     // Traverse each node in the subtree
@@ -781,7 +781,7 @@ void SvoNavmesh::collect_collision_shapes(Node* node) {
 /**
  Intersect svo nodes with collider recursively
  */
-void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth) {
+void SvoNavmap::traverse_svo_space_and_insert(OctreeNode* node, int depth) {
     if (depth > maxDepth) {
         return;
     }
@@ -826,31 +826,31 @@ void SvoNavmesh::traverse_svo_space_and_insert(OctreeNode* node, int depth) {
     }
 }
 
-SparseVoxelOctree& SvoNavmesh::get_svo() {
+SparseVoxelOctree& SvoNavmap::get_svo() {
     return *svo;
 }
 
-void SvoNavmesh::set_info(float p_info) {
+void SvoNavmap::set_info(float p_info) {
     testdouble = p_info;
 }
-float SvoNavmesh::get_info() {
+float SvoNavmap::get_info() {
     return testdouble;
 }
-void SvoNavmesh::set_uuid(String p_uuid) {
+void SvoNavmap::set_uuid(String p_uuid) {
     uuid = p_uuid;
 }
-String SvoNavmesh::get_uuid() const {
+String SvoNavmap::get_uuid() const {
     return uuid;
 }
-void SvoNavmesh::set_adjacent_list(Array data) {
+void SvoNavmap::set_adjacent_list(Array data) {
     adjacent_uuids = data;
 }
-Array SvoNavmesh::get_adjacent_list() const {
+Array SvoNavmap::get_adjacent_list() const {
     return adjacent_uuids;
 }
 
 // override
-void SvoNavmesh::_ready() {
+void SvoNavmap::_ready() {
     if (debug_mode)
     {
         //reset_pool();
@@ -863,10 +863,10 @@ void SvoNavmesh::_ready() {
 
     refresh_svo();
 }
-void SvoNavmesh::_process(double delta) {
+void SvoNavmap::_process(double delta) {
     if (debug_mode) draw_svo_v3(svo->root, 1, DrawRef_minDepth, DrawRef_maxDepth);
 }
-void SvoNavmesh::_physics_process(double delta)
+void SvoNavmap::_physics_process(double delta)
 {
 
 }
@@ -926,11 +926,11 @@ static void clear_static_material() {
     debugEmptyMaterial.unref();
     EmptyMaterial_shader.unref();
 }
-void SvoNavmesh::_enter_tree()
+void SvoNavmap::_enter_tree()
 {
     init_static_material();
 }
-void SvoNavmesh::_exit_tree(){
+void SvoNavmap::_exit_tree(){
     clear_static_material();
     target_rids.clear();
 }
@@ -940,7 +940,7 @@ void SvoNavmesh::_exit_tree(){
  牵涉到svo结构变化前需要手动调用此方法
  Debug rendering only
  */
-void SvoNavmesh::reset_pool_v3() {
+void SvoNavmap::reset_pool_v3() {
     if (!exist_meshes.is_empty()) {
         for (int i = 0; i < exist_meshes.size(); ++i) {
             OctreeNode* instance_node = exist_meshes[i];
@@ -963,7 +963,7 @@ void SvoNavmesh::reset_pool_v3() {
     reset_debugCheck();
 }
 
-void SvoNavmesh::reset_debugCheck() {
+void SvoNavmap::reset_debugCheck() {
     if (debugChecked_node) {
         if (debugChecked_node->voxel && debugChecked_node->voxel->isSolid())
         {
@@ -982,7 +982,7 @@ void SvoNavmesh::reset_debugCheck() {
  牵涉到svo结构变化后需要手动调用此方法
  Debug rendering only
  */
-void SvoNavmesh::init_debug_mesh_v3() {
+void SvoNavmap::init_debug_mesh_v3() {
     uint64_t begin = Time::get_singleton()->get_ticks_msec();
     init_debug_mesh_v3(svo->root, 1);
     uint64_t end = Time::get_singleton()->get_ticks_msec();
@@ -1005,7 +1005,7 @@ void SvoNavmesh::init_debug_mesh_v3() {
         active_meshes.clear();
     }
 }
-void SvoNavmesh::init_debug_mesh_v3(OctreeNode* node, int depth)
+void SvoNavmap::init_debug_mesh_v3(OctreeNode* node, int depth)
 {
     if (!node || depth > svo->maxDepth) return;
 
@@ -1050,7 +1050,7 @@ void SvoNavmesh::init_debug_mesh_v3(OctreeNode* node, int depth)
  This method needs to be called manually if changes are involved in the svo structure.
  牵涉到svo结构变化需要手动调用此方法
  */
-void SvoNavmesh::init_neighbors()
+void SvoNavmap::init_neighbors()
 {
     uint64_t begin = Time::get_singleton()->get_ticks_msec();
 
@@ -1073,7 +1073,7 @@ void SvoNavmesh::init_neighbors()
     uint64_t end = Time::get_singleton()->get_ticks_msec();
     UtilityFunctions::print(vformat("init neighbors with %d milliseconds", end - begin));
 }
-void SvoNavmesh::set_neighbors(OctreeNode* node)
+void SvoNavmap::set_neighbors(OctreeNode* node)
 {
     if (node->father == nullptr) return; // 排除根节点; Exclude root nodes
 
@@ -1101,7 +1101,7 @@ void SvoNavmesh::set_neighbors(OctreeNode* node)
         }
     }
 }
-void SvoNavmesh::set_neighbors_from_brother(OctreeNode* node) {
+void SvoNavmap::set_neighbors_from_brother(OctreeNode* node) {
     // Set the neighbor of the current node from the children array of the father node
     // 从父节点的children数组中设置当前节点的邻居
     for (int i = 0; i < 3; i++) {
@@ -1114,7 +1114,7 @@ void SvoNavmesh::set_neighbors_from_brother(OctreeNode* node) {
 /**
  Draw the svo for debuging.
  */
-void SvoNavmesh::draw_svo_v3(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
+void SvoNavmap::draw_svo_v3(OctreeNode* node, int current_depth, int min_depth, int max_depth) {
     if (!node->isDebugMeshValid()) {
         WARN_PRINT_ONCE(vformat("debugMesh is null"));
         return;
@@ -1149,7 +1149,7 @@ void SvoNavmesh::draw_svo_v3(OctreeNode* node, int current_depth, int min_depth,
 /**
  Switch the path visiblity.
  */
-void SvoNavmesh::draw_path_switch_visible(bool show) {
+void SvoNavmap::draw_path_switch_visible(bool show) {
     for (MeshInstance3D* path: path_pool) {
         path->set_visible(show);
     }
@@ -1158,7 +1158,7 @@ void SvoNavmesh::draw_path_switch_visible(bool show) {
 /**
  debugMesh dynamic support.
  */
-MeshInstance3D* SvoNavmesh::get_mesh_instance_from_pool() {
+MeshInstance3D* SvoNavmap::get_mesh_instance_from_pool() {
     if (exist_meshes.size() > 0) {
         MeshInstance3D* instance = exist_meshes[exist_meshes.size() - 1]->debugMesh; // 获取最后一个元素
         exist_meshes.remove_at(exist_meshes.size() - 1); // 移除最后一个元素
@@ -1257,7 +1257,7 @@ Vector<OctreeNode*> get_neighbors(OctreeNode* node, float agent_r) {
 /**
  check if a direct path (with radius) between two points is feasible
  */
-bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius) {
+bool SvoNavmap::can_travel_directly_with_cylinder(const Vector3& from, const Vector3& to, float agent_radius) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
     PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(this->get_world_3d()->get_space());
@@ -1326,7 +1326,7 @@ bool SvoNavmesh::can_travel_directly_with_cylinder(const Vector3& from, const Ve
 /**
  check if a direct path (no radius) between two points is feasible
  */
-bool SvoNavmesh::can_travel_directly_with_ray(const Vector3& from, const Vector3& to) {
+bool SvoNavmap::can_travel_directly_with_ray(const Vector3& from, const Vector3& to) {
     // Get the PhysicsDirectSpaceState3D instance
     // 获取 PhysicsDirectSpaceState3D 实例
     PhysicsDirectSpaceState3D* space_state = PhysicsServer3D::get_singleton()->space_get_direct_state(this->get_world_3d()->get_space());
@@ -1369,7 +1369,7 @@ float calculateSegmentLength(float rootVoxelSize, float minVoxelSize) {
  Try to find the most distant directly reachable point possible;
  Than jump to that point.
  */
-void SvoNavmesh::smooth_path_string_pulling_fast(float agent_radius) {
+void SvoNavmap::smooth_path_string_pulling_fast(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1409,7 +1409,7 @@ void SvoNavmesh::smooth_path_string_pulling_fast(float agent_radius) {
 /**
  fast smooth_path (with subdivide path)
  */
-void SvoNavmesh::smooth_path_string_pulling_fast_v2(float agent_radius) {
+void SvoNavmap::smooth_path_string_pulling_fast_v2(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1468,7 +1468,7 @@ void SvoNavmesh::smooth_path_string_pulling_fast_v2(float agent_radius) {
  records the farthest points that can be reached directly;
  Than jump to that point.
  */
-void SvoNavmesh::smooth_path_string_pulling_full(float agent_radius) {
+void SvoNavmap::smooth_path_string_pulling_full(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1503,7 +1503,7 @@ void SvoNavmesh::smooth_path_string_pulling_full(float agent_radius) {
 /**
  better smooth_path (with subdivide path)
  */
-void SvoNavmesh::smooth_path_string_pulling_full_v2(float agent_radius) {
+void SvoNavmap::smooth_path_string_pulling_full_v2(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1553,7 +1553,7 @@ void SvoNavmesh::smooth_path_string_pulling_full_v2(float agent_radius) {
 /**
  jump point smooth_path (with subdivide path)
  */
-void SvoNavmesh::smooth_path_string_pulling_v3(float agent_radius) {
+void SvoNavmap::smooth_path_string_pulling_v3(float agent_radius) {
     if (exist_path.size() < 2) {
         return;
     }
@@ -1621,7 +1621,7 @@ void SvoNavmesh::smooth_path_string_pulling_v3(float agent_radius) {
 /**
  cut the path
  */
-Vector<Vector3> SvoNavmesh::subdivide_path(Vector3 start, Vector3 end, float segment_length) {
+Vector<Vector3> SvoNavmap::subdivide_path(Vector3 start, Vector3 end, float segment_length) {
     Vector<Vector3> subdivided;
     subdivided.push_back(start); // Start point is always added
 
@@ -1648,7 +1648,7 @@ Vector<Vector3> SvoNavmesh::subdivide_path(Vector3 start, Vector3 end, float seg
  * @param agent_r: The radius of nav agent.
  * @param is_smooth: Whether show smoothed path.
  */
-Array SvoNavmesh::find_path_v1(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+Array SvoNavmap::find_path_v1(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
     // both points need to be in empty
     // TODO: change this when ready for game
     if (query_voxel(start) || query_voxel(end)) {
@@ -1749,7 +1749,7 @@ Array SvoNavmesh::find_path_v1(const Vector3 start, const Vector3 end, float age
 /**
  check if there is a straight line between a path
  */
-bool SvoNavmesh::direct_path_check(const Vector3 start, const Vector3 end, float agent_r) {
+bool SvoNavmap::direct_path_check(const Vector3 start, const Vector3 end, float agent_r) {
     // both points need to be in empty
     // TODO: change this when ready for game
     if (query_voxel(start) || query_voxel(end)) {
@@ -1795,7 +1795,7 @@ bool SvoNavmesh::direct_path_check(const Vector3 start, const Vector3 end, float
  * @param agent_r: The radius of nav agent.
  * @param is_smooth: Whether show smoothed path.
  */
-void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+void SvoNavmap::find_path_v2(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
     if (query_voxel(start)) {
         UtilityFunctions::print("Point start inside SOLID!");
         return;
@@ -1886,7 +1886,7 @@ void SvoNavmesh::find_path_v2(const Vector3 start, const Vector3 end, float agen
     transfer_path_result();
 }
 
-void SvoNavmesh::transfer_path_result() {
+void SvoNavmap::transfer_path_result() {
     // transfer with array
     path_result.clear();
     for (const Vector3& point : exist_path) {
@@ -1902,7 +1902,7 @@ void SvoNavmesh::transfer_path_result() {
  * @param agent_r: The radius of nav agent.
  * @param is_smooth: Whether show smoothed path.
  */
-void SvoNavmesh::find_path_multi_thread(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
+void SvoNavmap::find_path_multi_thread(const Vector3 start, const Vector3 end, float agent_r, bool is_smooth) {
     UtilityFunctions::print("find_path_multi_thread is now completed with GD_Script in Engine");
 }
 
@@ -1910,7 +1910,7 @@ void SvoNavmesh::find_path_multi_thread(const Vector3 start, const Vector3 end, 
  init MeshInstance3D for path finding.
  For static debug draw only.
  */
-void SvoNavmesh::init_debug_path(float agent_r) {
+void SvoNavmap::init_debug_path(float agent_r) {
     // Clear old debug children
     for (int i = 0; i < path_pool.size(); ++i) {
         remove_child(path_pool[i]);
@@ -1987,7 +1987,7 @@ void SvoNavmesh::init_debug_path(float agent_r) {
  * @param end: The path end position(world).
  * @param agent_r: The radius of nav agent.
  */
-bool SvoNavmesh::find_raw_path(Vector3 start, Vector3 end, float agent_r) {
+bool SvoNavmap::find_raw_path(Vector3 start, Vector3 end, float agent_r) {
     Vector<OctreeNode*> open_set;
     Dictionary came_from;
     Dictionary g_score;
@@ -2053,7 +2053,7 @@ bool SvoNavmesh::find_raw_path(Vector3 start, Vector3 end, float agent_r) {
  * @param end: The path end position(world).
  * @param agent_r: The radius of nav agent.
  */
-bool SvoNavmesh::find_raw_path_v2(Vector3 start, Vector3 end, float agent_r) {
+bool SvoNavmap::find_raw_path_v2(Vector3 start, Vector3 end, float agent_r) {
     Vector<OctreeNode*> open_set;
     Dictionary came_from;
     Dictionary g_score;

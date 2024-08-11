@@ -18676,7 +18676,7 @@ collision_mask = 15
 [node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/Scene Collection/Group Core/Hollow3_001/Hollow3_12_002/Hollow3_12_002_col"]
 shape = SubResource("ConvexPolygonShape3D_k8eki")
 
-[node name="SvoNavmesh_1" type="SvoNavmesh" parent="spider exp project/Scene Collection"]
+[node name="SvoNavmap_1" type="SvoNavmap" parent="spider exp project/Scene Collection"]
 uuid = "01rdbj0r-kpm1-1ymt-1pk7w2vfgu17"
 debug_mode = true
 rootVoxelSize = 10.0
@@ -18687,7 +18687,7 @@ debug_path_scale = 0.2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
 script = ExtResource("4_47m0g")
 
-[node name="SvoNavmesh_2" type="SvoNavmesh" parent="spider exp project/Scene Collection"]
+[node name="SvoNavmap_2" type="SvoNavmap" parent="spider exp project/Scene Collection"]
 uuid = "o4al29ci-wh3b-6fbj-yk7wk8eldyo7"
 debug_mode = true
 rootVoxelSize = 10.0
@@ -18698,7 +18698,7 @@ debug_path_scale = 0.2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0)
 script = ExtResource("4_47m0g")
 
-[node name="SvoNavmesh_core" type="SvoNavmesh" parent="spider exp project/Scene Collection"]
+[node name="SvoNavmap_core" type="SvoNavmap" parent="spider exp project/Scene Collection"]
 uuid = "acbda7sh-1gj4-r84k-i6vqgl2cq3ff"
 adjacent_uuids = [null, null, "01rdbj0r-kpm1-1ymt-1pk7w2vfgu17", "o4al29ci-wh3b-6fbj-yk7wk8eldyo7", null, null]
 debug_mode = true
@@ -18744,5 +18744,5 @@ visible = false
 transform = Transform3D(-1, 0, -8.74228e-08, 0, 1, 0, 8.74228e-08, 0, -1, 0, 0, -0.05)
 visible = false
 
-[node name="SvoNavmeshManager" type="SvoNavmeshManager" parent="."]
+[node name="SvoNavmapManager" type="SvoNavmapManager" parent="."]
 script = ExtResource("7_valfk")

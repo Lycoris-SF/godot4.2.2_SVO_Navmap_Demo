@@ -1,5 +1,5 @@
 #include "svo_structure.h"
-#include "svo_navmesh.h"
+#include "svo_navmap.h"
 
 using namespace godot;
 
