@@ -1,5 +1,5 @@
-#ifndef SVO_NAVMESH_H
-#define SVO_NAVMESH_H
+#ifndef SVO_NAVMAP_H
+#define SVO_NAVMAP_H
 
 // variant & container
 #include <godot_cpp/classes/node3d.hpp>
@@ -54,8 +54,8 @@ namespace godot {
     static int sum_time = 0;
     static int sum_count = 0;
 
-    class SvoNavmesh : public Node3D {
-        GDCLASS(SvoNavmesh, Node3D)
+    class SvoNavmap : public Node3D {
+        GDCLASS(SvoNavmap, Node3D)
 
     private:
         SparseVoxelOctree *svo;
@@ -95,7 +95,7 @@ namespace godot {
         OctreeNode* debugChecked_node;
 
         // v3
-        Vector<OctreeNode*> exist_meshes;   // Node of MeshInstance3D children in SvoNavmesh: Node3D
+        Vector<OctreeNode*> exist_meshes;   // Node of MeshInstance3D children in SvoNavmap: Node3D
         Vector<OctreeNode*> active_meshes;  // Node of active MeshInstance list
         
         // debug path
@@ -144,9 +144,9 @@ namespace godot {
         static void _bind_methods();
 
     public:
-        SvoNavmesh();
-        //SvoNavmesh(float size, Vector3 position, Vector3 rotation);
-        ~SvoNavmesh();
+        SvoNavmap();
+        //SvoNavmap(float size, Vector3 position, Vector3 rotation);
+        ~SvoNavmap();
 
         // uuid
         String uuid;            // need support from minos-UUID-generator-for-godot
@@ -201,6 +201,7 @@ namespace godot {
         //bool find_raw_path_JP(Vector3 start, Vector3 end, float agent_r);
 
         // override
+        void _init();
         void _ready();
         void _process(double delta);
         void _physics_process(double delta);
@@ -210,4 +211,4 @@ namespace godot {
 
 }
 
-#endif // SVO_NAVMESH_H
+#endif // SVO_NAVMAP_H

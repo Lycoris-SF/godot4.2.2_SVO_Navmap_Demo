@@ -4,7 +4,7 @@
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/core/class_db.hpp>
 
-#include "svo_navmesh.h"
+#include "svo_navmap.h"
 
 namespace godot {
     class SparseVoxelOctreeResource : public Resource {
@@ -16,7 +16,7 @@ namespace godot {
         }
 
     public:
-        SvoNavmesh *svo;
+        SvoNavmap *svo;
         void save();
         void read();
 

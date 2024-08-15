@@ -1,5 +1,5 @@
 @tool
-extends SvoNavmeshManager
+extends SvoNavmapManager
 
 func _init():
 		pass
@@ -7,13 +7,13 @@ func _init():
 func _ready():
 	if self.is_inside_tree():
 		populate_navmeshes()
-		print("All SvoNavmeshes have been acquired by manager.")
+		print("All SvoNavmapes have been acquired by manager.")
 	
 func _input(event):
 	# Receives key input
 	if event is InputEventKey and event.pressed:
 		if event.keycode == KEY_E:
-			if self is SvoNavmeshManager and self.is_inside_tree():
+			if self is SvoNavmapManager and self.is_inside_tree():
 				self._pathfinding_done()
 				for uuid in MinosUUIDGenerator.usedUUID:
 					print("exist uuid: " + uuid)
@@ -24,7 +24,7 @@ func populate_navmeshes():
 
 func collect_navmeshes(node):
 	for child in node.get_children():
-		if child is SvoNavmesh:
+		if child is SvoNavmap:
 			self.acquire_navmesh(child)
 		collect_navmeshes(child)
 

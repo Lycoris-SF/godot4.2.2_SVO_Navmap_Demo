@@ -5,8 +5,8 @@
 #include <godot_cpp/core/class_db.hpp>
 #include <godot_cpp/godot.hpp>
 
-#include "SVO/svo_navmesh.h"
-#include "SVO/svo_navmesh_manager.h"
+#include "SVO/svo_navmap.h"
+#include "SVO/svo_navmap_manager.h"
 #include "SVO/svo_connector.h"
 using namespace godot;
 
@@ -19,8 +19,8 @@ void initialize_svo_module(ModuleInitializationLevel p_level) {
     ClassDB::register_class<Voxel>();
     ClassDB::register_class<OctreeNode>();
     ClassDB::register_class<SparseVoxelOctree>();
-    ClassDB::register_class<SvoNavmesh>();          //main
-    ClassDB::register_class<SvoNavmeshManager>();
+    ClassDB::register_class<SvoNavmap>();          //main
+    ClassDB::register_class<SvoNavmapManager>();
     ClassDB::register_class<SvoConnector>();
     
 }

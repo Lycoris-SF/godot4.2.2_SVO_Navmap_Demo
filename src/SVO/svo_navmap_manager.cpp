@@ -1,29 +1,29 @@
-#include "svo_navmesh_manager.h"
+#include "svo_navmap_manager.h"
 
 using namespace godot;
 
-void SvoNavmeshManager::_bind_methods()
+void SvoNavmapManager::_bind_methods()
 {
-    ClassDB::bind_method(D_METHOD("acquire_navmesh"), &SvoNavmeshManager::acquire_navmesh);
-    ClassDB::bind_method(D_METHOD("tidy_adjacents"), &SvoNavmeshManager::tidy_adjacents);
+    ClassDB::bind_method(D_METHOD("acquire_navmesh"), &SvoNavmapManager::acquire_navmesh);
+    ClassDB::bind_method(D_METHOD("tidy_adjacents"), &SvoNavmapManager::tidy_adjacents);
 }
 
-SvoNavmeshManager::SvoNavmeshManager()
+SvoNavmapManager::SvoNavmapManager()
 {
 
 }
-SvoNavmeshManager::~SvoNavmeshManager() {
+SvoNavmapManager::~SvoNavmapManager() {
     // 由于SvoNavmesh被加入场景树，用SvoNavmeshManager管理可能会造成混乱
 }
 
-void SvoNavmeshManager::acquire_navmesh(SvoNavmesh* navmesh) {
+void SvoNavmapManager::acquire_navmesh(SvoNavmap* navmesh) {
     navmeshes[navmesh->uuid] = navmesh;
 }
 
-bool SvoNavmeshManager::query(Vector3 position) const {
+bool SvoNavmapManager::query(Vector3 position) const {
     Array keys = navmeshes.keys();
     for (int i = 0; i < keys.size(); i++) {
-        SvoNavmesh* navmesh = Object::cast_to<SvoNavmesh>(navmeshes[keys[i]]);
+        SvoNavmap* navmesh = Object::cast_to<SvoNavmap>(navmeshes[keys[i]]);
         if (navmesh && navmesh->query_voxel(position)) {
             return true;
         }
@@ -31,10 +31,10 @@ bool SvoNavmeshManager::query(Vector3 position) const {
     return false;
 }
 
-SvoNavmesh* SvoNavmeshManager::find_navmesh_containing(Vector3 position) const {
+SvoNavmap* SvoNavmapManager::find_navmesh_containing(Vector3 position) const {
     Array keys = navmeshes.keys();
     for (int i = 0; i < keys.size(); i++) {
-        SvoNavmesh* navmesh = Object::cast_to<SvoNavmesh>(navmeshes[keys[i]]);
+        SvoNavmap* navmesh = Object::cast_to<SvoNavmap>(navmeshes[keys[i]]);
         if (navmesh && navmesh->query_voxel(position)) {
             return navmesh;
         }
@@ -42,9 +42,9 @@ SvoNavmesh* SvoNavmeshManager::find_navmesh_containing(Vector3 position) const {
     return nullptr;
 }
 
-Vector<Vector3> SvoNavmeshManager::find_path(Vector3 start, Vector3 end) const {
-    SvoNavmesh* start_navmesh = find_navmesh_containing(start);
-    SvoNavmesh* end_navmesh = find_navmesh_containing(end);
+Vector<Vector3> SvoNavmapManager::find_path(Vector3 start, Vector3 end) const {
+    SvoNavmap* start_navmesh = find_navmesh_containing(start);
+    SvoNavmap* end_navmesh = find_navmesh_containing(end);
 
     if (!start_navmesh || !end_navmesh) {
         return {}; // 如果起点或终点不在任何一个Navmesh中，则返回空路径
@@ -68,7 +68,7 @@ Vector<Vector3> SvoNavmeshManager::find_path(Vector3 start, Vector3 end) const {
     return path;
 }
 
-void SvoNavmeshManager::tidy_adjacents() {
+void SvoNavmapManager::tidy_adjacents() {
     auto roots = find_possible_roots();
     HashSet<String> visited;
 
@@ -80,7 +80,7 @@ void SvoNavmeshManager::tidy_adjacents() {
     }
 }
 
-void SvoNavmeshManager::bfs(String start_uuid, HashSet<String>& visited) {
+void SvoNavmapManager::bfs(String start_uuid, HashSet<String>& visited) {
     std::queue<String> queue;
     queue.push(start_uuid);
     visited.insert(start_uuid);
@@ -90,7 +90,7 @@ void SvoNavmeshManager::bfs(String start_uuid, HashSet<String>& visited) {
         queue.pop();
 
         // 安全地获取当前 navmesh
-        SvoNavmesh* current_navmesh = Object::cast_to<SvoNavmesh>(navmeshes[current_uuid]);
+        SvoNavmap* current_navmesh = Object::cast_to<SvoNavmap>(navmeshes[current_uuid]);
         if (!current_navmesh) continue;  // 如果转换失败或navmesh不存在，则跳过
 
         Array adjacent_uuids = current_navmesh->adjacent_uuids;
@@ -108,7 +108,7 @@ void SvoNavmeshManager::bfs(String start_uuid, HashSet<String>& visited) {
                 // 检查 UUID 字符串是否为空并且该 UUID 是否已被访问
                 if (!adj_uuid.is_empty() && !visited.has(adj_uuid)) {
                     // 正确地获取相邻的 navmesh
-                    SvoNavmesh* adj_navmesh = Object::cast_to<SvoNavmesh>(navmeshes[adj_uuid]);
+                    SvoNavmap* adj_navmesh = Object::cast_to<SvoNavmap>(navmeshes[adj_uuid]);
                     if (!adj_navmesh) continue;  // 如果转换失败或navmesh不存在，则跳过
 
                     visited.insert(adj_uuid);
@@ -138,14 +138,14 @@ void SvoNavmeshManager::bfs(String start_uuid, HashSet<String>& visited) {
     }
 }
 
-Array SvoNavmeshManager::find_possible_roots() {
+Array SvoNavmapManager::find_possible_roots() {
     // 将所有SvoNavmesh UUID添加到潜在根集合中
     Array keys = navmeshes.keys();
     Array potential_roots = keys.duplicate();
 
     // 从潜在根集合中移除任何被引用的UUID
     for (int i = 0; i < keys.size(); i++) {
-        Array adjacent_uuids = Object::cast_to<SvoNavmesh>(navmeshes[keys[i]])->adjacent_uuids;
+        Array adjacent_uuids = Object::cast_to<SvoNavmap>(navmeshes[keys[i]])->adjacent_uuids;
         for (int j = 0; j < adjacent_uuids.size(); j++) {
             Variant adj_uuid_var = adjacent_uuids[j];
             // 检查adj_uuid_var是否为有效的UUID

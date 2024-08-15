@@ -59,38 +59,38 @@ func _on_gui_input(event):
 func _on_rebuild_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		selected_node.rebuild_svo()
 func _on_refresh_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		selected_node.refresh_svo()
 func _on_clear_all_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		selected_node.clear_svo(true)
 func _on_clear_svo_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		selected_node.clear_svo(false)
 func _on_generate_connector_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		selected_node.generate_connector()
 func _on_clear_connector_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		selected_node.clear_connector()
 		
 func _on_insert_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		var spin_box_x = dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Value/SpinBoxX").get_value()
 		var spin_box_y = dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Value/SpinBoxY").get_value()
 		var spin_box_z = dock_content.get_node("VBoxContainer_Insert/HBoxContainer_Value/SpinBoxZ").get_value()
@@ -100,7 +100,7 @@ func _on_insert_pressed():
 func _on_update_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		var spin_box_x = dock_content.get_node("HBoxContainer Update/SpinBoxX").get_value()
 		var spin_box_y = dock_content.get_node("HBoxContainer Update/SpinBoxY").get_value()
 		var spin_box_z = dock_content.get_node("HBoxContainer Update/SpinBoxZ").get_value()
@@ -111,7 +111,7 @@ func _on_update_pressed():
 func _on_query_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		var spin_box_x = dock_content.get_node("HBoxContainer Query/SpinBoxX").get_value()
 		var spin_box_y = dock_content.get_node("HBoxContainer Query/SpinBoxY").get_value()
 		var spin_box_z = dock_content.get_node("HBoxContainer Query/SpinBoxZ").get_value()
@@ -123,7 +123,7 @@ func _on_query_pressed():
 func _on_check_id_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		var line_edit = dock_content.get_node("HBoxContainer ID Query/LineEdit ID") as LineEdit
 		var id = line_edit.text
 		
@@ -132,7 +132,7 @@ func _on_check_id_pressed():
 func _on_find_path_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		var start_x = dock_content.get_node("HBoxContainer Path Start/SpinBoxX").get_value()
 		var start_y = dock_content.get_node("HBoxContainer Path Start/SpinBoxY").get_value()
 		var start_z = dock_content.get_node("HBoxContainer Path Start/SpinBoxZ").get_value()
@@ -152,7 +152,7 @@ func _on_find_path_pressed():
 func _on_find_rand_path_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmesh:
+	if selected_node is SvoNavmap:
 		var radius = dock_content.get_node("HBoxContainer Path Start/SpinBoxR").get_value()
 		var is_smooth = dock_content.get_node("HBoxContainer Path End/CheckBox").is_pressed()
 		var rand_empty_in_svo = _find_rand_empty_pos(selected_node)
@@ -188,6 +188,6 @@ func _find_rand_empty_pos(selected_node):
 func _on_tidy_pressed():
 	var editor_selection = get_editor_interface().get_selection()
 	var selected_node = editor_selection.get_selected_nodes()[0]
-	if selected_node is SvoNavmeshManager:
+	if selected_node is SvoNavmapManager:
 		selected_node.tidy_adjacents()
 	

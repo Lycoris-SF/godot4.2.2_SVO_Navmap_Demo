@@ -16,7 +16,7 @@ var end_time_m
 
 # steering
 var agent_r_temp = 0.125
-var svo : SvoNavmesh
+var svo : SvoNavmap
 var path = []
 var current_target_index = 0
 var close_enough_radius = 0.125/2
@@ -38,7 +38,7 @@ func _ready():
 	is_smooth = true
 	thread = Thread.new()
 	# temp solution, replace with mamager when ready for games
-	svo = $"../spider exp project/SvoNavmesh"
+	svo = $"../spider exp project/SvoNavmap"
 	A_star_completed.connect(_on_A_star_completed)
 	Path_found.connect(_on_path_found)
 	

@@ -115,7 +115,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelY" type="Label" parent="VBoxContainer_Insert/HBoxContainer_Value"]
 layout_mode = 2
-theme_override_colors/font_color = Color(3.56168e-06, 0, 0.881772, 1)
+theme_override_colors/font_color = Color(0, 0.501961, 0, 1)
 text = "Y"
 vertical_alignment = 1
 
@@ -129,7 +129,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelZ" type="Label" parent="VBoxContainer_Insert/HBoxContainer_Value"]
 layout_mode = 2
-theme_override_colors/font_color = Color(2.32231e-06, 0.500788, 9.62615e-08, 1)
+theme_override_colors/font_color = Color(0, 0, 0.882353, 1)
 text = "Z"
 vertical_alignment = 1
 
@@ -161,7 +161,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelY" type="Label" parent="HBoxContainer Update"]
 layout_mode = 2
-theme_override_colors/font_color = Color(3.56168e-06, 0, 0.881772, 1)
+theme_override_colors/font_color = Color(0, 0.501961, 0, 1)
 text = "Y"
 vertical_alignment = 1
 
@@ -175,7 +175,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelZ" type="Label" parent="HBoxContainer Update"]
 layout_mode = 2
-theme_override_colors/font_color = Color(2.32231e-06, 0.500788, 9.62615e-08, 1)
+theme_override_colors/font_color = Color(0, 0, 0.882353, 1)
 text = "Z"
 vertical_alignment = 1
 
@@ -215,7 +215,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelY" type="Label" parent="HBoxContainer Query"]
 layout_mode = 2
-theme_override_colors/font_color = Color(3.56168e-06, 0, 0.881772, 1)
+theme_override_colors/font_color = Color(0, 0.501961, 0, 1)
 text = "Y"
 vertical_alignment = 1
 
@@ -229,7 +229,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelZ" type="Label" parent="HBoxContainer Query"]
 layout_mode = 2
-theme_override_colors/font_color = Color(2.32231e-06, 0.500788, 9.62615e-08, 1)
+theme_override_colors/font_color = Color(0, 0, 0.882353, 1)
 text = "Z"
 vertical_alignment = 1
 
@@ -293,7 +293,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelY" type="Label" parent="HBoxContainer Path Start"]
 layout_mode = 2
-theme_override_colors/font_color = Color(3.56168e-06, 0, 0.881772, 1)
+theme_override_colors/font_color = Color(0, 0.501961, 0, 1)
 text = "Y"
 vertical_alignment = 1
 
@@ -307,7 +307,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelZ" type="Label" parent="HBoxContainer Path Start"]
 layout_mode = 2
-theme_override_colors/font_color = Color(2.32231e-06, 0.500788, 9.62615e-08, 1)
+theme_override_colors/font_color = Color(0, 0, 0.882353, 1)
 text = "Z"
 vertical_alignment = 1
 
@@ -352,7 +352,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelY" type="Label" parent="HBoxContainer Path End"]
 layout_mode = 2
-theme_override_colors/font_color = Color(3.56168e-06, 0, 0.881772, 1)
+theme_override_colors/font_color = Color(0, 0.501961, 0, 1)
 text = "Y"
 vertical_alignment = 1
 
@@ -366,7 +366,7 @@ custom_arrow_step = 1.0
 
 [node name="LabelZ" type="Label" parent="HBoxContainer Path End"]
 layout_mode = 2
-theme_override_colors/font_color = Color(2.32231e-06, 0.500788, 9.62615e-08, 1)
+theme_override_colors/font_color = Color(0, 0, 0.882353, 1)
 text = "Z"
 vertical_alignment = 1
 
