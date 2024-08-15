@@ -201,6 +201,7 @@ namespace godot {
         //bool find_raw_path_JP(Vector3 start, Vector3 end, float agent_r);
 
         // override
+        void _init();
         void _ready();
         void _process(double delta);
         void _physics_process(double delta);

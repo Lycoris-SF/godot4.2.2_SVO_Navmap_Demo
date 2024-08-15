@@ -402,9 +402,9 @@ void SparseVoxelOctree::expand_node(OctreeNode* node, int depth)
 
 void SparseVoxelOctree::merge_children(OctreeNode* node) {
     bool isOccupied = false;
+    node->isLeaf = true;
 
     if (!node->voxel->isLiquid()) {
-        node->isLeaf = true;
         return;
     }
     for (int i = 0; i < 8; ++i) {
@@ -420,14 +420,15 @@ void SparseVoxelOctree::merge_children(OctreeNode* node) {
         else {
             node->voxel->state = VS_SOLID;
         }
-        node->isLeaf = true;
     }
     else {
         // TODEBUG: 如果没有子节点占据，则父节点也不占据
-        if (node->voxel) {
-            memdelete(node->voxel);
+        if (!node->voxel) {
+            node->voxel = memnew(Voxel(VS_EMPTY, calActualVoxelSize(node->currentDepth)));
         }
-        node->isLeaf = false;
+        else {
+            node->voxel->state = VS_EMPTY;
+        }
     }
 }
 void SparseVoxelOctree::create_empty_children(OctreeNode* node, int depth) {

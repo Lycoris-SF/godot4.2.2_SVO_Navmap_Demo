@@ -550,12 +550,6 @@ void SvoNavmap::clear_connector() {
  Refresh the svo base on svo setting changes.
  */
 void SvoNavmap::refresh_svo() {
-    // FIXME: expand_node() and compress_node() are doing
-    // dynamic changes to svo nodes, which needs to call init_debug_mesh
-    // to have proper rendering. And right now it's gonna face 
-    // memory access voilation. Abandon this temp since 
-    // rebuild_svo is the only needed right now.
-
     //if (debug_mode) reset_pool();
     if (debug_mode) reset_pool_v3();
     if (svo->maxDepth != maxDepth) {
@@ -850,6 +844,9 @@ Array SvoNavmap::get_adjacent_list() const {
 }
 
 // override
+void SvoNavmap::_init() {
+    //node_ready = true;
+}
 void SvoNavmap::_ready() {
     if (debug_mode)
     {
@@ -2059,13 +2056,13 @@ bool SvoNavmap::find_raw_path_v2(Vector3 start, Vector3 end, float agent_r) {
     Dictionary g_score;
     Dictionary f_score;
 
-    Vector3 start_grid = worldToGrid(start);
-    Vector3 end_grid = worldToGrid(end);
-    OctreeNode* start_node = svo->get_deepest_node(start_grid); // Convert world coordinates to SVO grid coordinates
-    OctreeNode* end_node = svo->get_deepest_node(end_grid);
+    Vector3 start_pos = worldToGrid(start);    // Convert world coordinates to SVO grid coordinates
+    Vector3 end_pos = worldToGrid(end);
+    OctreeNode* start_node = svo->get_deepest_node(start_pos);
+    OctreeNode* end_node = svo->get_deepest_node(end_pos);
     OctreeNode* nearest_node = start_node;
 
-    came_from[start_node->center] = start_grid;  // manual add start
+    came_from[start_node->center] = start_pos;  // manual add start
     open_set.push_back(start_node);
     g_score[start_node->get_instance_id()] = 0;
     f_score[start_node->get_instance_id()] = heuristic(start_node->centerGlobal, end_node->centerGlobal);
@@ -2074,8 +2071,8 @@ bool SvoNavmap::find_raw_path_v2(Vector3 start, Vector3 end, float agent_r) {
     while (!open_set.is_empty()) {
         OctreeNode* current = get_lowest_f_score_node(open_set, f_score);
         if (current == end_node) {
-            came_from[end_grid] = end_node->center;  // manual add end
-            exist_path = reconstruct_path(came_from, end_grid);
+            came_from[end_pos] = end_node->center;  // manual add end
+            exist_path = reconstruct_path(came_from, end_pos);
             return true;
         }
 
