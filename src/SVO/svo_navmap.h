@@ -94,6 +94,21 @@ namespace godot {
 
         OctreeNode* debugChecked_node;
 
+        //av_time
+        uint64_t insert_av=0;
+        int insert_n = 0;
+        uint64_t debug_av=0;
+        int debug_n = 0;
+        uint64_t neighbor_av=0;
+        int neighbor_n = 0;
+        uint64_t astar_av = 0;
+        int astar_n = 0;
+        uint64_t smooth_path_av = 0;
+        int smooth_path_n = 0;
+        void av_benchmark_time_build_output();
+        void av_benchmark_time_path_output();
+        void clear_av_benchmark();
+
         // v3
         Vector<OctreeNode*> exist_meshes;   // Node of MeshInstance3D children in SvoNavmap: Node3D
         Vector<OctreeNode*> active_meshes;  // Node of active MeshInstance list
@@ -103,7 +118,7 @@ namespace godot {
         Vector<MeshInstance3D*> path_pool;
 
         // v3
-        void init_debug_mesh_v3();
+        void init_debug_mesh_v3(bool av_benchmark);
         void init_debug_mesh_v3(OctreeNode* node, int depth);
         void reset_pool_v3();
         void draw_svo_v3(OctreeNode* node, int current_depth, int min_depth, int max_depth);
@@ -125,7 +140,7 @@ namespace godot {
         Vector<Vector3> calculate_connector_points();
 
         // neighbors
-        void init_neighbors();
+        void init_neighbors(bool av_benchmark);
         void set_neighbors(OctreeNode* node);
         void set_neighbors_from_brother(OctreeNode* node);
 

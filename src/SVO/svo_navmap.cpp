@@ -33,6 +33,7 @@ void SvoNavmap::_bind_methods() {
     ClassDB::bind_method(D_METHOD("query_voxel", "position"), &SvoNavmap::query_voxel);
     ClassDB::bind_method(D_METHOD("check_voxel_with_id", "id"), &SvoNavmap::check_voxel_with_id);
     ClassDB::bind_method(D_METHOD("update_voxel", "position", "isSolid"), &SvoNavmap::update_voxel);
+    ClassDB::bind_method(D_METHOD("clear_av_benchmark"), &SvoNavmap::clear_av_benchmark);
 
     ClassDB::bind_method(D_METHOD("get_info"), &SvoNavmap::get_info);
     ClassDB::bind_method(D_METHOD("set_info", "p_info"), &SvoNavmap::set_info);
@@ -201,6 +202,55 @@ uint32_t create_collision_mask(const Vector<int>& layers) {
     }
     return mask;
 }
+void benchmark_time_output(String text, String unit, uint64_t time) {
+    UtilityFunctions::print(vformat("%s %d %s", text, time, unit));
+}
+void SvoNavmap::av_benchmark_time_build_output() {
+    if (insert_av / 1000.0 < 1) {
+        benchmark_time_output("insert_av:", "microseconds", insert_av);
+    }
+    else {
+        benchmark_time_output("insert_av:", "milliseconds", insert_av/1000.0);
+    }
+    if (debug_av / 1000.0 < 1) {
+        benchmark_time_output("debug_av:", "microseconds", debug_av);
+    }
+    else {
+        benchmark_time_output("debug_av:", "milliseconds", debug_av / 1000.0);
+    }
+    if (neighbor_av / 1000.0 < 1) {
+        benchmark_time_output("neighbor_av:", "microseconds", neighbor_av);
+    }
+    else {
+        benchmark_time_output("neighbor_av:", "milliseconds", neighbor_av / 1000.0);
+    }
+}
+void SvoNavmap::av_benchmark_time_path_output() {
+    if (astar_av / 1000.0 < 1) {
+        benchmark_time_output("astar_av:", "microseconds", astar_av);
+    }
+    else {
+        benchmark_time_output("astar_av:", "milliseconds", astar_av / 1000.0);
+    }
+    if (smooth_path_av / 1000.0 < 1) {
+        benchmark_time_output("smooth_path_av:", "microseconds", smooth_path_av);
+    }
+    else {
+        benchmark_time_output("smooth_path_av:", "milliseconds", smooth_path_av / 1000.0);
+    }
+}
+void SvoNavmap::clear_av_benchmark() {
+    insert_av = 0;
+    insert_n = 0;
+    debug_av = 0;
+    debug_n = 0;
+    neighbor_av = 0;
+    neighbor_n = 0;
+    astar_av = 0;
+    astar_n = 0;
+    smooth_path_av = 0;
+    smooth_path_n = 0;
+}
 
 /**
  * Inserts a voxel from the specified world position.
@@ -223,8 +273,8 @@ void SvoNavmap::insert_voxel(Vector3 world_position) {
     if (debug_mode) reset_pool_v3();
     svo->insert(grid_position);
     //init_debug_mesh(svo->root, 1);
-    if (debug_mode) init_debug_mesh_v3();
-    init_neighbors();
+    if (debug_mode) init_debug_mesh_v3(true);
+    init_neighbors(true);
 }
 /**
  * Query a voxel from the specified world position.
@@ -362,7 +412,7 @@ void SvoNavmap::set_debug_mode(bool debug_mode) {
         if (debug_mode) {
             //reset_pool();
             //init_debug_mesh(svo->root, 1);
-            init_debug_mesh_v3();
+            init_debug_mesh_v3(false);
         }
         else {
             //force_clear_debug_mesh();
@@ -444,16 +494,18 @@ void SvoNavmap::rebuild_svo() {
 
         insert_svo_based_on_collision_shapes();
         //init_debug_mesh(svo->root, 1);
-        init_debug_mesh_v3();
-        init_neighbors();
+        init_debug_mesh_v3(true);
+        init_neighbors(true);
     }
     else {
         svo->clear();
         clear_connector();
 
         insert_svo_based_on_collision_shapes();
-        init_neighbors();
+        init_neighbors(true);
     }
+
+    av_benchmark_time_build_output();
 }
 
 /**
@@ -574,8 +626,8 @@ void SvoNavmap::refresh_svo() {
         svo->update_global_centers();
     }
     //if (debug_mode) init_debug_mesh(svo->root, 1);
-    if (debug_mode) init_debug_mesh_v3();
-    init_neighbors();
+    if (debug_mode) init_debug_mesh_v3(false);
+    init_neighbors(false);
 }
 
 /**
@@ -597,15 +649,18 @@ void SvoNavmap::clear_svo(bool clear_setting) {
     }
     clear_connector();
 
-    if (debug_mode) init_debug_mesh_v3();
-    init_neighbors();
+    if (debug_mode) init_debug_mesh_v3(false);
+    init_neighbors(false);
 }
 
 /**
  Generate svo from collider.
  */
 void SvoNavmap::insert_svo_based_on_collision_shapes() {
-    uint64_t begin = Time::get_singleton()->get_ticks_msec();
+    uint64_t begin_time_u = Time::get_singleton()->get_ticks_usec();
+    uint64_t begin_time_m = Time::get_singleton()->get_ticks_msec();
+    uint64_t end_time_u;
+    uint64_t end_time_m;
 
     Node* parent_node = get_parent();
     if (parent_node != nullptr) {
@@ -613,8 +668,16 @@ void SvoNavmap::insert_svo_based_on_collision_shapes() {
     }
     traverse_svo_space_and_insert(svo->root, 1);
 
-    uint64_t end = Time::get_singleton()->get_ticks_msec();
-    UtilityFunctions::print(vformat("insert svo nodes with %d milliseconds", end - begin));
+    end_time_u = Time::get_singleton()->get_ticks_usec();
+    end_time_m = Time::get_singleton()->get_ticks_msec();
+    if (end_time_m - begin_time_m < 1) {
+        benchmark_time_output("insert svo nodes:", "microseconds", end_time_u - begin_time_u);
+    }
+    else {
+        benchmark_time_output("insert svo nodes:", "milliseconds", end_time_m - begin_time_m);
+    }
+    insert_av = (insert_av * insert_n + end_time_u - begin_time_u) / (insert_n+1.0);
+    insert_n++;
 }
 
 /**
@@ -853,9 +916,9 @@ void SvoNavmap::_ready() {
         //reset_pool();
         //init_debug_mesh(svo->root, 1);
         reset_pool_v3();
-        init_debug_mesh_v3();
+        init_debug_mesh_v3(false);
     }
-    init_neighbors();
+    init_neighbors(false);
     node_ready = true;
 
     refresh_svo();
@@ -979,11 +1042,26 @@ void SvoNavmap::reset_debugCheck() {
  牵涉到svo结构变化后需要手动调用此方法
  Debug rendering only
  */
-void SvoNavmap::init_debug_mesh_v3() {
-    uint64_t begin = Time::get_singleton()->get_ticks_msec();
+void SvoNavmap::init_debug_mesh_v3(bool av_benchmark) {
+    uint64_t begin_time_u = Time::get_singleton()->get_ticks_usec();
+    uint64_t begin_time_m = Time::get_singleton()->get_ticks_msec();
+    uint64_t end_time_u;
+    uint64_t end_time_m;
+
     init_debug_mesh_v3(svo->root, 1);
-    uint64_t end = Time::get_singleton()->get_ticks_msec();
-    UtilityFunctions::print(vformat("init debugMesh with %d milliseconds", end - begin));
+
+    end_time_u = Time::get_singleton()->get_ticks_usec();
+    end_time_m = Time::get_singleton()->get_ticks_msec();
+    if (end_time_m - begin_time_m < 1) {
+        benchmark_time_output("init debugMesh:", "microseconds", end_time_u - begin_time_u);
+    }
+    else {
+        benchmark_time_output("init debugMesh:", "milliseconds", end_time_m - begin_time_m);
+    }
+    if (av_benchmark) {
+        debug_av = (debug_av * debug_n + end_time_u - begin_time_u) / (debug_n + 1.0);
+        debug_n++;
+    }
 
     if (!exist_meshes.is_empty()) {
         for (int i = 0; i < exist_meshes.size(); ++i) {
@@ -1047,9 +1125,12 @@ void SvoNavmap::init_debug_mesh_v3(OctreeNode* node, int depth)
  This method needs to be called manually if changes are involved in the svo structure.
  牵涉到svo结构变化需要手动调用此方法
  */
-void SvoNavmap::init_neighbors()
+void SvoNavmap::init_neighbors(bool av_benchmark)
 {
-    uint64_t begin = Time::get_singleton()->get_ticks_msec();
+    uint64_t begin_time_u = Time::get_singleton()->get_ticks_usec();
+    uint64_t begin_time_m = Time::get_singleton()->get_ticks_msec();
+    uint64_t end_time_u;
+    uint64_t end_time_m;
 
     Vector<OctreeNode*> queue;
     queue.push_back(svo->root);
@@ -1067,8 +1148,18 @@ void SvoNavmap::init_neighbors()
         set_neighbors(current);
     }
 
-    uint64_t end = Time::get_singleton()->get_ticks_msec();
-    UtilityFunctions::print(vformat("init neighbors with %d milliseconds", end - begin));
+    end_time_u = Time::get_singleton()->get_ticks_usec();
+    end_time_m = Time::get_singleton()->get_ticks_msec();
+    if (end_time_m - begin_time_m < 1) {
+        benchmark_time_output("init neighbors:", "microseconds", end_time_u - begin_time_u);
+    }
+    else {
+        benchmark_time_output("init neighbors:", "milliseconds", end_time_m - begin_time_m);
+    }
+    if (av_benchmark) {
+        neighbor_av = (neighbor_av * neighbor_n + end_time_u - begin_time_u) / (neighbor_n + 1.0);
+        neighbor_n++;
+    }
 }
 void SvoNavmap::set_neighbors(OctreeNode* node)
 {
@@ -1824,12 +1915,14 @@ void SvoNavmap::find_path_v2(const Vector3 start, const Vector3 end, float agent
         if (end_time_m - begin_time_m < 1) {
             // If the millisecond timing is less than 1 millisecond, use microsecond output
             // 如果毫秒计时小于1毫秒，使用微秒输出
-            UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
+            //UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
+            benchmark_time_output("Path finding:","microseconds", end_time_u - begin_time_u);
         }
         else {
             // Otherwise use milliseconds output
             // 否则使用毫秒输出
-            UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
+            //UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
+            benchmark_time_output("Path finding:", "milliseconds", end_time_m - begin_time_m);
         }
     }
     else {
@@ -1846,13 +1939,17 @@ void SvoNavmap::find_path_v2(const Vector3 start, const Vector3 end, float agent
         if (end_time_m - begin_time_m < 1) {
             // If the millisecond timing is less than 1 millisecond, use microsecond output
             // 如果毫秒计时小于1毫秒，使用微秒输出
-            UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
+            //UtilityFunctions::print(vformat("Path finding took %d microseconds", end_time_u - begin_time_u));
+            benchmark_time_output("Path finding:", "microseconds", end_time_u - begin_time_u);
         }
         else {
             // Otherwise use milliseconds output
             // 否则使用毫秒输出
-            UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
+            //UtilityFunctions::print(vformat("Path finding took %d milliseconds", end_time_m - begin_time_m));
+            benchmark_time_output("Path finding:", "milliseconds", end_time_m - begin_time_m);
         }
+        astar_av = (astar_av * astar_n + end_time_u - begin_time_u) / (astar_n + 1.0);
+        astar_n++;
 
         // smooth path
         if (is_smooth) {
@@ -1867,13 +1964,17 @@ void SvoNavmap::find_path_v2(const Vector3 start, const Vector3 end, float agent
             if (end_time_m - begin_time_m < 1) {
                 // If the millisecond timing is less than 1 millisecond, use microsecond output
                 // 如果毫秒计时小于1毫秒，使用微秒输出
-                UtilityFunctions::print(vformat("Smooth path took %d microseconds", end_time_u - begin_time_u));
+                //UtilityFunctions::print(vformat("Smooth path took %d microseconds", end_time_u - begin_time_u));
+                benchmark_time_output("Smooth path:", "microseconds", end_time_u - begin_time_u);
             }
             else {
                 // Otherwise use milliseconds output
                 // 否则使用毫秒输出
-                UtilityFunctions::print(vformat("Smooth path took %d milliseconds", end_time_m - begin_time_m));
+                //UtilityFunctions::print(vformat("Smooth path took %d milliseconds", end_time_m - begin_time_m));
+                benchmark_time_output("Smooth path:", "milliseconds", end_time_m - begin_time_m);
             }
+            smooth_path_av = (smooth_path_av * smooth_path_n + end_time_u - begin_time_u) / (smooth_path_n + 1.0);
+            smooth_path_n++;
         }
     }
 
@@ -1881,6 +1982,7 @@ void SvoNavmap::find_path_v2(const Vector3 start, const Vector3 end, float agent
     if (debug_mode) init_debug_path(agent_r * debug_path_scale);
 
     transfer_path_result();
+    av_benchmark_time_path_output();
 }
 
 void SvoNavmap::transfer_path_result() {

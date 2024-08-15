@@ -78,6 +78,8 @@ shape = SubResource("SphereShape3D_sfkf3")
 
 [node name="SvoNavmap" type="SvoNavmap" parent="TestBox"]
 debug_mode = true
+max_depth = 5
+DrawRef_maxDepth = 5
 
 [node name="NavAgent" type="Node3D" parent="."]
 visible = false

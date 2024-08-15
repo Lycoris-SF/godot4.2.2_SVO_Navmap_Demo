@@ -18676,17 +18676,6 @@ collision_mask = 15
 [node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/Scene Collection/Group Core/Hollow3_001/Hollow3_12_002/Hollow3_12_002_col"]
 shape = SubResource("ConvexPolygonShape3D_k8eki")
 
-[node name="SvoNavmap_1" type="SvoNavmap" parent="spider exp project/Scene Collection"]
-uuid = "01rdbj0r-kpm1-1ymt-1pk7w2vfgu17"
-debug_mode = true
-rootVoxelSize = 10.0
-max_depth = 6
-DrawRef_minDepth = 3
-show_empty = false
-debug_path_scale = 0.2
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
-script = ExtResource("4_47m0g")
-
 [node name="SvoNavmap_2" type="SvoNavmap" parent="spider exp project/Scene Collection"]
 uuid = "o4al29ci-wh3b-6fbj-yk7wk8eldyo7"
 debug_mode = true
@@ -18696,6 +18685,7 @@ DrawRef_minDepth = 3
 show_empty = false
 debug_path_scale = 0.2
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -10, 0)
+visible = false
 script = ExtResource("4_47m0g")
 
 [node name="SvoNavmap_core" type="SvoNavmap" parent="spider exp project/Scene Collection"]
@@ -18707,10 +18697,23 @@ max_depth = 6
 DrawRef_minDepth = 3
 show_empty = false
 debug_path_scale = 0.2
+visible = false
+script = ExtResource("4_47m0g")
+
+[node name="SvoNavmap" type="SvoNavmap" parent="spider exp project"]
+uuid = "01rdbj0r-kpm1-1ymt-1pk7w2vfgu17"
+debug_mode = true
+rootVoxelSize = 10.0
+max_depth = 7
+DrawRef_minDepth = 3
+DrawRef_maxDepth = 7
+show_empty = false
+debug_path_scale = 0.2
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 10, 0)
 script = ExtResource("4_47m0g")
 
 [node name="NavAgent" type="RigidBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.95606, 14.7178, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.64529, 14.7178, -0.936055)
 collision_layer = 8
 collision_mask = 15
 mass = 0.1

@@ -11,6 +11,7 @@ func _ready():
 		self.manual_set_node_ready()
 		self.clear_svo(false)
 		self.refresh_svo()
+		self.clear_av_benchmark()
 		if not Engine.is_editor_hint():
 			self.debug_mode = GlobalValue.svo_debugMode
 			self.rebuild_svo()
