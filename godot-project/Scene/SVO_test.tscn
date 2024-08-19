@@ -1,4 +1,7 @@
-[gd_scene load_steps=11 format=3 uid="uid://chewy0u4pq2ke"]
+[gd_scene load_steps=22 format=3 uid="uid://chewy0u4pq2ke"]
+
+[ext_resource type="Script" path="res://Scripts/Bot/svo_nav_agent_patrol.gd" id="1_gkdf8"]
+[ext_resource type="Script" path="res://Scripts/SVO/svo_runtime.gd" id="1_jcgrh"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_grtcx"]
 
@@ -41,20 +44,68 @@ albedo_color = Color(0.607843, 0.196078, 0.196078, 1)
 metallic = 0.8
 roughness = 0.5
 
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_q3k83"]
+friction = 0.2
+bounce = 0.4
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_hnx5g"]
+margin = 0.0
+radius = 0.125
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_710y8"]
+albedo_color = Color(0.607843, 0.196078, 0.196078, 1)
+metallic = 0.8
+roughness = 0.5
+
+[sub_resource type="SphereMesh" id="SphereMesh_7tunh"]
+material = SubResource("StandardMaterial3D_710y8")
+radius = 0.075
+height = 0.15
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_px3m2"]
+albedo_color = Color(0.607843, 0.196078, 0.196078, 1)
+metallic = 0.8
+roughness = 0.5
+
+[sub_resource type="CylinderMesh" id="CylinderMesh_hgwmt"]
+top_radius = 0.01
+bottom_radius = 0.01
+height = 0.075
+radial_segments = 16
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3bdlc"]
+albedo_color = Color(0.607843, 0.196078, 0.196078, 1)
+metallic = 0.8
+roughness = 0.5
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7mfo3"]
+transparency = 1
+shading_mode = 0
+albedo_color = Color(0, 1, 1, 1)
+disable_receive_shadows = true
+
+[sub_resource type="SphereMesh" id="SphereMesh_0k732"]
+material = SubResource("StandardMaterial3D_7mfo3")
+radius = 0.05
+height = 0.1
+
 [node name="Node3D" type="Node3D"]
 
 [node name="Point Ref" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0, 0)
 
 [node name="Path Ref Start" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, -0.05, 0.98)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.721, 0, -0.981)
 
 [node name="Path Ref End" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.9, 0.1, -0.9)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.722801, 0.0664836, 0.987313)
 
 [node name="TestBox" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.02953, 0, 0)
+visible = false
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="TestBox"]
+transform = Transform3D(0.2, 0, 0, 0, 2, 0, 0, 0, 2, -1, 0, 0)
 mesh = SubResource("BoxMesh_grtcx")
 
 [node name="StaticBody3D" type="StaticBody3D" parent="TestBox/MeshInstance3D"]
@@ -62,6 +113,66 @@ collision_layer = 17
 collision_mask = 15
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="TestBox/MeshInstance3D/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="TestBox"]
+transform = Transform3D(0.2, 0, 0, 0, 2, 0, 0, 0, 2, 1, 0, 0)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="TestBox/MeshInstance3D3"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestBox/MeshInstance3D3/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D4" type="MeshInstance3D" parent="TestBox"]
+transform = Transform3D(0.2, 0, 0, 0, 2, 0, 0, 0, 1.6, -0.554441, 0, -0.193562)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="TestBox/MeshInstance3D4"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestBox/MeshInstance3D4/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D5" type="MeshInstance3D" parent="TestBox"]
+transform = Transform3D(0.2, 0, 0, 0, 2, 0, 0, 0, 1.6, -0.108264, 0, 0.19543)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="TestBox/MeshInstance3D5"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestBox/MeshInstance3D5/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D6" type="MeshInstance3D" parent="TestBox"]
+transform = Transform3D(0.2, 0, 0, 0, 2, 0, 0, 0, 0.64421, 0.462711, 0, 0.676399)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="TestBox/MeshInstance3D6"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestBox/MeshInstance3D6/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D7" type="MeshInstance3D" parent="TestBox"]
+transform = Transform3D(0.2, 0, 0, 0, 2, 0, 0, 0, 0.663518, 0.468337, 0, -0.662439)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="TestBox/MeshInstance3D7"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TestBox/MeshInstance3D7/StaticBody3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
 shape = SubResource("BoxShape3D_et74y")
 
@@ -78,8 +189,177 @@ shape = SubResource("SphereShape3D_sfkf3")
 
 [node name="SvoNavmap" type="SvoNavmap" parent="TestBox"]
 debug_mode = true
+rootVoxelSize = 2.1
+max_depth = 5
+DrawRef_maxDepth = 5
+
+[node name="spider exp project" type="Node3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.2, 0, 0, 0, 5.32283, 0, 0, 0, 2, -1, 0, 0)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D13" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.2, 0, 0, 0, 5.32283, 0, 0, 0, 2, 1.78356, 0, -1.01993)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D13"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D13/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D10" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.353553, 0, 0.353553, 0, 5.32283, 0, -0.353553, 0, 0.353553, -0.369627, 0, 1.76363)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D10"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D10/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D12" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.503553, 0, 0.503553, 0, 5.32283, 0, -0.503553, 0, 0.503553, -0.00131893, 0, 0.00444454)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D12"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D12/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D11" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.353553, 0, 0.353553, 0, 5.32283, 0, -0.353553, 0, 0.353553, 0.388237, 0, 1.76363)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D11"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D11/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.2, 0, 0, 0, 5.32283, 0, 0, 0, 2, 0.997361, 0, 0)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D2"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D2/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.2, 0, 0, 0, 5.32283, 0, 0, 0, 5.23281, 2.59808, 0, 0)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D3"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D3/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D4" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.2, 0, 0, 0, 5.32283, 0, 0, 0, 5.23281, -2.57947, 0, 0)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D4"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D4/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D5" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(-8.74228e-09, 0, 5.23281, 0, 5.32283, 0, -0.2, 0, -2.28733e-07, -0.00131917, 0, -2.60649)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D5"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D5/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D6" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(-8.74228e-09, 0, 5.23281, 0, 5.32283, 0, -0.2, 0, -2.28733e-07, -0.00131917, 0, 2.5994)
+mesh = SubResource("BoxMesh_grtcx")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D6"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D6/StaticBody3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00367737, 0, 0.000160694)
+shape = SubResource("BoxShape3D_et74y")
+
+[node name="MeshInstance3D7" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.3, 0, 0, 0, 3.36, 0, 0, 0, 0.3, -0.00251222, 0, -1.63614)
+mesh = SubResource("SphereMesh_kdrdh")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D7"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D7/StaticBody3D"]
+shape = SubResource("SphereShape3D_sfkf3")
+
+[node name="MeshInstance3D8" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.3, 0, 0, 0, 3.36, 0, 0, 0, 0.3, -1.75906, 0, 1.75654)
+mesh = SubResource("SphereMesh_kdrdh")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D8"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D8/StaticBody3D"]
+shape = SubResource("SphereShape3D_sfkf3")
+
+[node name="MeshInstance3D9" type="MeshInstance3D" parent="spider exp project"]
+transform = Transform3D(0.3, 0, 0, 0, 3.36, 0, 0, 0, 0.3, 1.75403, 0, 1.78488)
+mesh = SubResource("SphereMesh_kdrdh")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="spider exp project/MeshInstance3D9"]
+collision_layer = 17
+collision_mask = 15
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="spider exp project/MeshInstance3D9/StaticBody3D"]
+shape = SubResource("SphereShape3D_sfkf3")
+
+[node name="SvoNavmap" type="SvoNavmap" parent="spider exp project"]
+uuid = "zadamxn1-9j4x-vdkx-56lue4dju3ft"
+debug_mode = true
+rootVoxelSize = 5.2
+max_depth = 7
+DrawRef_maxDepth = 6
+show_empty = false
+debug_path_scale = 0.35
+script = ExtResource("1_jcgrh")
 
 [node name="NavAgent" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.51023, 0, -2.26651)
 visible = false
 
 [node name="Body" type="MeshInstance3D" parent="NavAgent"]
@@ -100,3 +380,79 @@ mesh = SubResource("CylinderMesh_llj74")
 transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0.085, 0, 0.038)
 material_override = SubResource("StandardMaterial3D_pvmyj")
 mesh = SubResource("CylinderMesh_llj74")
+
+[node name="NavAgentPatrol" type="RigidBody3D" parent="." node_paths=PackedStringArray("patrol_points")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.25104, 0, -2.29221)
+collision_layer = 8
+collision_mask = 15
+physics_material_override = SubResource("PhysicsMaterial_q3k83")
+gravity_scale = 0.0
+can_sleep = false
+script = ExtResource("1_gkdf8")
+patrol_points = [NodePath("../PatrolGroup/Point1"), NodePath("../PatrolGroup/Point2"), NodePath("../PatrolGroup/Point3"), NodePath("../PatrolGroup/Point4"), NodePath("../PatrolGroup/Point5"), NodePath("../PatrolGroup/Point6"), NodePath("../PatrolGroup/Point7")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavAgentPatrol"]
+shape = SubResource("SphereShape3D_hnx5g")
+
+[node name="Body" type="MeshInstance3D" parent="NavAgentPatrol"]
+mesh = SubResource("SphereMesh_7tunh")
+skeleton = NodePath("")
+
+[node name="GunR" type="MeshInstance3D" parent="NavAgentPatrol/Body"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, -0.085, 0, 0.038)
+material_override = SubResource("StandardMaterial3D_px3m2")
+mesh = SubResource("CylinderMesh_hgwmt")
+
+[node name="GunL" type="MeshInstance3D" parent="NavAgentPatrol/Body"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0.085, 0, 0.038)
+material_override = SubResource("StandardMaterial3D_3bdlc")
+mesh = SubResource("CylinderMesh_hgwmt")
+
+[node name="PatrolGroup" type="Node3D" parent="."]
+
+[node name="Point1" type="Node3D" parent="PatrolGroup"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.99025, 0, -2.01083)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PatrolGroup/Point1"]
+mesh = SubResource("SphereMesh_0k732")
+
+[node name="Point2" type="Node3D" parent="PatrolGroup"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.20986, 0, -1.01571)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PatrolGroup/Point2"]
+mesh = SubResource("SphereMesh_0k732")
+
+[node name="Point3" type="Node3D" parent="PatrolGroup"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.75004, 0, 2.23731)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PatrolGroup/Point3"]
+mesh = SubResource("SphereMesh_0k732")
+
+[node name="Point4" type="Node3D" parent="PatrolGroup"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.06375, 0, 1.77063)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PatrolGroup/Point4"]
+mesh = SubResource("SphereMesh_0k732")
+
+[node name="Point5" type="Node3D" parent="PatrolGroup"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.76377, 0, -2.38419e-07)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PatrolGroup/Point5"]
+mesh = SubResource("SphereMesh_0k732")
+
+[node name="Point6" type="Node3D" parent="PatrolGroup"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.00397229, 0, 0.75492)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PatrolGroup/Point6"]
+mesh = SubResource("SphereMesh_0k732")
+
+[node name="Point7" type="Node3D" parent="PatrolGroup"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0108354, 0, -2.15496)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="PatrolGroup/Point7"]
+mesh = SubResource("SphereMesh_0k732")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0, 6.97321, 0)
+projection = 1
+size = 5.5
