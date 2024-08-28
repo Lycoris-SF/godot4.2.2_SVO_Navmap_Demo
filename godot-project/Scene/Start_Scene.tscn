@@ -16,12 +16,12 @@ custom_minimum_size = Vector2(150, 0)
 layout_mode = 1
 anchors_preset = -1
 anchor_left = 0.402344
-anchor_top = 0.296682
-anchor_right = 0.597656
+anchor_top = 0.297
+anchor_right = 0.651
 anchor_bottom = 0.368441
 offset_left = 37.5
-offset_top = 7.75
-offset_right = -37.5
+offset_top = 7.43832
+offset_right = -139.921
 offset_bottom = -7.74998
 grow_horizontal = 2
 grow_vertical = 2
@@ -46,14 +46,14 @@ text = "svo_debugMode"
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 1
 anchors_preset = -1
-anchor_left = 0.402344
-anchor_top = 0.296682
-anchor_right = 0.597656
-anchor_bottom = 0.368441
-offset_left = 37.4997
-offset_top = 107.75
-offset_right = -37.4998
-offset_bottom = 92.2502
+anchor_left = 0.395
+anchor_top = 0.399
+anchor_right = 0.651
+anchor_bottom = 0.483
+offset_left = 51.6002
+offset_top = 7.47833
+offset_right = -139.92
+offset_bottom = -20.0176
 grow_horizontal = 2
 grow_vertical = 2
 scale = Vector2(1.5, 1.5)
@@ -71,6 +71,36 @@ text = "SVO_demo_patrol"
 [node name="CheckButton" type="CheckButton" parent="CenterContainer2/HBoxContainer"]
 layout_mode = 2
 button_pressed = true
+text = "svo_debugMode"
+
+[node name="CenterContainer3" type="CenterContainer" parent="."]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 0.395573
+anchor_top = 0.505
+anchor_right = 0.651
+anchor_bottom = 0.589
+offset_left = 37.4997
+offset_top = 8.10004
+offset_right = -125.92
+offset_bottom = -19.3959
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(1.5, 1.5)
+pivot_offset = Vector2(75, 15.5)
+metadata/_edit_use_anchors_ = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="CenterContainer3"]
+layout_mode = 2
+
+[node name="Button3" type="Button" parent="CenterContainer3/HBoxContainer"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+text = "SVO_demo_game"
+
+[node name="CheckButton" type="CheckButton" parent="CenterContainer3/HBoxContainer"]
+layout_mode = 2
 text = "svo_debugMode"
 
 [node name="MarginContainer" type="MarginContainer" parent="."]
@@ -103,3 +133,5 @@ Window stretch is not safe right now"
 [connection signal="pressed" from="CenterContainer/HBoxContainer/CheckButton" to="." method="_on_debugMode_changed"]
 [connection signal="pressed" from="CenterContainer2/HBoxContainer/Button2" to="." method="_on_StartButton2_pressed"]
 [connection signal="pressed" from="CenterContainer2/HBoxContainer/CheckButton" to="." method="_on_debugMode_changed"]
+[connection signal="pressed" from="CenterContainer3/HBoxContainer/Button3" to="." method="_on_StartButton3_pressed"]
+[connection signal="pressed" from="CenterContainer3/HBoxContainer/CheckButton" to="." method="_on_debugMode_changed"]

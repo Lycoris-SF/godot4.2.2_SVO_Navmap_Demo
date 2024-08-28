@@ -1,3 +1,3 @@
 extends Node
 
-var svo_debugMode:bool = true
+var svo_debugMode:bool = false
